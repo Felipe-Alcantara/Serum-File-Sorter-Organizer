@@ -51,7 +51,7 @@ MAPA_CATEGORIAS = {
         "tubular", "campanella", "tinkle",
         # Português
         "sino",
-        "bl",  # Curta
+        "bl", "bel",  # Curtas (bel = prefix BEL_)
     ],
     
     "Piano_Keys": [
@@ -59,21 +59,21 @@ MAPA_CATEGORIAS = {
         "rhodes", "wurlitzer", "clav", "clavinet", "electric piano",
         # Português
         "teclado",
-        "pn", "ky", "key",  # Curtas
+        "pn", "ky", "key", "or",  # Curtas (or = Organ)
     ],
     
     "Pad": [
         "pad", "pads", "atmosphere", "atmos", "athmos", "drone", 
         "ambient", "atmospheric", "evolving", "lush", "warm pad", 
         "soft pad", "dreamy", "ethereal", "texture", "soundscape",
-        "pd", "atm", "pa",  # Curtas
+        "pd", "atm", "pa", "at",  # Curtas (at = Atmosphere)
     ],
     
     "Synth": [
         "synth", "poly", "polysynth", "analog", "analogue",
         "vintage", "retro", "classic synth", "80s", "synthwave",
-        "supersaw", "saw lead", "square",
-        "syn", "saw", "sy",  # Curtas
+        "supersaw", "saw lead", "square", "classic",
+        "syn", "saw", "sy", "cl",  # Curtas (cl = Classic prefix)
     ],
     
     "Acid": [
@@ -89,13 +89,15 @@ MAPA_CATEGORIAS = {
     "Drums": [
         "drum", "drums", "kick", "snare", "clap", "hihat", "hi-hat",
         "cymbal", "percussion", "perc", "tom", "808 drum", "one shot",
-        "hat", "hh", "cy",  # Curtas
+        "timpani",  # Timpani drums
+        "loop", "kit",  # Drum loops e kits
+        "hat", "hh", "cy", "dl", "dr",  # Curtas (dl = Drum Loop, dr = Drums Kit)
     ],
     
     "Arp_Seq": [
         "arp", "arps", "arpeggio", "arpeggiated", "sequence", "sequencer",
         "rhythm", "rhythmic", "gated", "gate", "pattern", "step",
-        "seq", "sq",  # Curtas
+        "seq", "sq", "ar", "tg",  # Curtas (ar = prefix AR_, tg = Trance Gate)
     ],
     
     "FX": [
@@ -106,7 +108,7 @@ MAPA_CATEGORIAS = {
         "grid",  # Para os "Grid -" presets
         # Português
         "ruido", "destrui", "explosao", "explo",
-        "fx",  # Curta - a extensão .fxp é removida antes da análise
+        "fx", "rss",  # Curtas (rss = Risers)
     ],
     
     "Vocals": [
@@ -120,7 +122,8 @@ MAPA_CATEGORIAS = {
         "brass", "horn", "horns", "flute", "woodwind", "wind",
         "cinematic", "epic", "trailer", "film", "movie score",
         "clarinet", "trumpet", "ney",  # Instrumentos específicos
-        "str", "orch", "br",  # Curtas
+        "ensemble", "church",  # Ensembles e sons de igreja
+        "str", "orch", "br", "ww", "st",  # Curtas (ww = Woodwind, st = Strings)
     ],
     
     "Chords": [
@@ -188,23 +191,23 @@ KEYWORDS_CURTAS = {
     # Pluck
     "pl", "pr",
     # Bell
-    "bl",
+    "bl", "bel",  # bel = prefix BEL_
     # Keys
-    "pn", "ky", "key",
+    "pn", "ky", "key", "or",  # or = Organ
     # Pad
-    "pd", "atm", "pa",
+    "pd", "atm", "pa", "at",  # at = Atmosphere
     # Synth
-    "syn", "saw", "sy",
+    "syn", "saw", "sy", "tg", "cl",  # tg = Trance Gate, cl = Classic
     # Drums
-    "hat", "hh", "cy",
+    "hat", "hh", "cy", "dl", "dr",  # dl = Drum Loop, dr = Drums Kit
     # Arp/Seq
-    "seq", "sq",
+    "seq", "sq", "ar",  # ar = Arp prefix
     # FX
-    "fx",
+    "fx", "rss",  # rss = Risers
     # Vocals
     "vc", "vo",
     # Strings
-    "str", "orch", "br",
+    "str", "orch", "br", "ww", "st",  # ww = Woodwind, st = Strings
     # Chords
     "ch", "chrd",
     # Guitar
