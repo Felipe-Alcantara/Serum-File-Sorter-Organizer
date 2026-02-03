@@ -7,7 +7,9 @@ Lê uma lista de arquivos e mostra como seriam categorizados.
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Adiciona diretório pai ao path para importar módulos
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.categorizador import identificar_categorias
 from src.config import CATEGORIA_PADRAO

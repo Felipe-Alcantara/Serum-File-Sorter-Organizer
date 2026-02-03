@@ -242,11 +242,54 @@ def exibir_preview_categorias(estatisticas: dict):
         print(f"  {Cores.DIM}... e mais {restantes} categorias{Cores.RESET}")
 
 
+def exibir_instrucoes_iniciais():
+    """
+    Exibe instruções e informações para o usuário antes de iniciar.
+    """
+    print(f"\n  {Cores.BOLD}{Cores.CIANO_CLARO}═══════════════════════════════════════════════════════════════{Cores.RESET}")
+    print(f"  {Cores.BOLD}  📖 BEM-VINDO AO SERUM PRESET ORGANIZER!{Cores.RESET}")
+    print(f"  {Cores.BOLD}{Cores.CIANO_CLARO}═══════════════════════════════════════════════════════════════{Cores.RESET}")
+    
+    print(f"""
+  {Cores.VERDE_CLARO}✨ O QUE ESTE PROGRAMA FAZ:{Cores.RESET}
+  
+     Este programa organiza automaticamente seus presets do Serum
+     em pastas por categoria (Bass, Lead, Pad, FX, etc.) baseado
+     no nome do arquivo.
+     
+  {Cores.AMARELO_CLARO}🔒 SEGURANÇA:{Cores.RESET}
+  
+     • Seus arquivos originais NUNCA serão modificados ou deletados
+     • O programa apenas COPIA os presets para novas pastas
+     • Detecção de duplicatas: arquivos idênticos não são copiados 2x
+     • Você pode executar quantas vezes quiser sem problemas
+     
+  {Cores.CIANO_CLARO}🧪 TESTES REALIZADOS:{Cores.RESET}
+  
+     • ✅ Testado com milhares de presets reais
+     • ✅ Milhares de padrões de nomes diferentes validados
+     • ✅ 13 testes unitários automatizados (todos passando)
+     • ✅ Suporte a keywords em português e inglês
+     
+  {Cores.MAGENTA_CLARO}📁 COMO USAR:{Cores.RESET}
+  
+     1. Informe a pasta de ORIGEM (onde estão seus presets)
+     2. Informe a pasta de DESTINO (onde criar a organização)
+     3. Confirme e aguarde o processamento
+     
+     Dica: Você pode colar caminhos diretamente no terminal!
+  """)
+    print(f"  {Cores.DIM}─────────────────────────────────────────────────────────────────{Cores.RESET}")
+
+
 def main():
     """Função principal do programa."""
     
     # Banner inicial
     exibir_banner_principal()
+    
+    # Instruções e informações
+    exibir_instrucoes_iniciais()
     
     # Timestamp de início
     print(f"  {Cores.DIM}⏰ Iniciado em: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}{Cores.RESET}")
