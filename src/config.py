@@ -22,9 +22,14 @@ MAPA_CATEGORIAS = {
     "Bass": [
         # Keywords principais
         "bass", "subbass", "sub bass", "808", "reese", 
-        "wobble", "growl", "riddim", "neuro",
+        "wobble", "growl", "riddim", "neuro", "hoover",
+        # Português
+        "baixo",
+        # Prefixos comuns de packs (sem word boundary)
+        "RKU_VLM_BT3_",  # Pack específico de bass
+        "rps",  # Recreations de presets (geralmente bass/dubstep)
         # Keywords curtas (usam word boundary estrito)
-        "bs", "sub",
+        "ba", "bs", "sub", "gw", "hv",
     ],
     
     "Lead": [
@@ -35,67 +40,115 @@ MAPA_CATEGORIAS = {
     ],
     
     "Pluck": [
-        "pluck", "plucked", "pizz", "pizzicato", "staccato", "short",
-        "pl",  # Curta
+        "pluck", "plucked", "pizz", "pizzicato", "staccato",
+        "mallet", "marimba", "xylophone", "vibraphone",
+        "pl", "pr",  # Curtas
+    ],
+    
+    "Bell": [
+        # Nova categoria para bells
+        "bell", "bells", "chime", "chimes", "glockenspiel",
+        "tubular", "campanella", "tinkle",
+        # Português
+        "sino",
+        "bl",  # Curta
     ],
     
     "Piano_Keys": [
         "piano", "keys", "keyboard", "organ", "e-piano", "epiano", 
         "rhodes", "wurlitzer", "clav", "clavinet", "electric piano",
-        "pn", "ky",  # Curtas
+        # Português
+        "teclado",
+        "pn", "ky", "key",  # Curtas
     ],
     
     "Pad": [
-        "pad", "pads", "atmosphere", "drone", "ambient", "atmospheric",
-        "evolving", "lush", "warm pad", "soft pad", "dreamy", "ethereal",
-        "texture", "soundscape",
-        "pd", "atm",  # Curtas
+        "pad", "pads", "atmosphere", "atmos", "athmos", "drone", 
+        "ambient", "atmospheric", "evolving", "lush", "warm pad", 
+        "soft pad", "dreamy", "ethereal", "texture", "soundscape",
+        "pd", "atm", "pa",  # Curtas
     ],
     
     "Synth": [
         "synth", "poly", "polysynth", "analog", "analogue",
         "vintage", "retro", "classic synth", "80s", "synthwave",
         "supersaw", "saw lead", "square",
-        "syn", "saw",  # Curtas
+        "syn", "saw", "sy",  # Curtas
+    ],
+    
+    "Acid": [
+        # Nova categoria para acid sounds (TB-303 style)
+        "acid", "303", "tb303", "tb-303", "acidic", "squelch",
+    ],
+    
+    "Zap": [
+        # Nova categoria para zap/laser sounds
+        "zap", "laser", "lazer", "pew", "zapper",
     ],
     
     "Drums": [
         "drum", "drums", "kick", "snare", "clap", "hihat", "hi-hat",
         "cymbal", "percussion", "perc", "tom", "808 drum", "one shot",
-        "hat", "hh",  # Curtas
+        "hat", "hh", "cy",  # Curtas
     ],
     
     "Arp_Seq": [
         "arp", "arps", "arpeggio", "arpeggiated", "sequence", "sequencer",
         "rhythm", "rhythmic", "gated", "gate", "pattern", "step",
-        "seq",  # Curta
+        "seq", "sq",  # Curtas
     ],
     
     "FX": [
         "sfx", "effect", "effects", "noise", "riser", "rise",
         "downlifter", "down lifter", "impact", "sweep", "swoosh",
         "transition", "trans", "whoosh", "hit", "tension", 
-        "buildup", "build up", "drop", "cinematic fx",
-        "fx",  # Curta - mas a extensão .fxp é removida antes da análise
+        "buildup", "build up", "cinematic fx", "glitch",
+        "grid",  # Para os "Grid -" presets
+        # Português
+        "ruido", "destrui", "explosao", "explo",
+        "fx",  # Curta - a extensão .fxp é removida antes da análise
     ],
     
     "Vocals": [
         "vox", "vocal", "vocals", "choir", "voice", "formant", 
         "talk", "talking", "speech", "sing", "singing", "human voice",
+        "vc", "vo",  # Curtas
     ],
     
     "Strings_Orch": [
         "string", "strings", "violin", "cello", "orchestra", "orchestral",
         "brass", "horn", "horns", "flute", "woodwind", "wind",
         "cinematic", "epic", "trailer", "film", "movie score",
-        "str", "orch",  # Curtas
+        "clarinet", "trumpet", "ney",  # Instrumentos específicos
+        "str", "orch", "br",  # Curtas
     ],
     
     "Chords": [
         "chord", "chords", "stab", "stabs", "harmonic", "harmony",
         "triads", "power chord",
         "ch", "chrd",  # Curtas
-    ]
+    ],
+    
+    "Guitar": [
+        # Nova categoria para guitarras
+        "guitar", "guitars", "gtr", "acoustic guitar", "electric guitar",
+        "gt",  # Curta
+    ],
+    
+    "Instrument": [
+        # Nova categoria para instrumentos étnicos/específicos
+        "instr", "instrument", "ethnic", "world",
+        "kalimba", "guzheng", "sitar", "didgeridoo", "pipe",
+        "flute", "pan flute", "bamboo",
+        # Português
+        "flauta",
+    ],
+    
+    "Dubstep": [
+        # Nova categoria para dubstep específico
+        "dub", "dubstep", "brostep", "riddim", "tearout",
+        "wompy", "womp", "wub",
+    ],
 }
 
 # =============================================================================
@@ -127,5 +180,35 @@ CATEGORIA_PADRAO = "Uncategorized"
 
 # Keywords curtas que precisam de word boundary estrito
 # (não podem ser parte de outra palavra)
-KEYWORDS_CURTAS = {"bs", "ld", "pl", "pn", "ky", "pd", "atm", "syn", "saw", 
-                   "hat", "hh", "seq", "fx", "str", "ch", "chrd", "sub", "orch"}
+KEYWORDS_CURTAS = {
+    # Bass
+    "ba", "bs", "sub", "gw", "hv", "rps",
+    # Lead
+    "ld",
+    # Pluck
+    "pl", "pr",
+    # Bell
+    "bl",
+    # Keys
+    "pn", "ky", "key",
+    # Pad
+    "pd", "atm", "pa",
+    # Synth
+    "syn", "saw", "sy",
+    # Drums
+    "hat", "hh", "cy",
+    # Arp/Seq
+    "seq", "sq",
+    # FX
+    "fx",
+    # Vocals
+    "vc", "vo",
+    # Strings
+    "str", "orch", "br",
+    # Chords
+    "ch", "chrd",
+    # Guitar
+    "gt",
+    # Dubstep
+    "dub",
+}

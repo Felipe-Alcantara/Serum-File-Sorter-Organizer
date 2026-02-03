@@ -46,21 +46,27 @@ def limpar_nome_para_analise(nome_arquivo: str) -> str:
     return nome_lower
 
 
-def verificar_keyword_valida(keyword: str, nome: str) -> bool:
+def verificar_keyword_valida(keyword: str, nome: str, nome_original: str = None) -> bool:
     """
     Verifica se uma keyword é um match válido no nome.
     
     Keywords curtas (definidas em KEYWORDS_CURTAS) usam word boundary estrito.
     Keywords maiores podem ser substring.
+    Keywords com underscore checam no nome original (antes da limpeza).
     
     Args:
         keyword: A keyword a procurar
-        nome: O nome do arquivo (já em lowercase)
+        nome: O nome do arquivo (já em lowercase e limpo)
+        nome_original: O nome original do arquivo (para prefixos com underscore)
         
     Returns:
         True se é um match válido
     """
     keyword_lower = keyword.lower()
+    
+    # Se a keyword contém underscore, verifica no nome original
+    if '_' in keyword and nome_original:
+        return keyword_lower in nome_original.lower()
     
     # Keywords definidas como curtas precisam de word boundary estrito
     if keyword_lower in KEYWORDS_CURTAS:
@@ -88,6 +94,10 @@ def identificar_categorias(nome_arquivo: str) -> List[str]:
     Returns:
         Lista de categorias identificadas (pode ser vazia se nenhuma)
     """
+    # Guarda nome original (sem extensão) para keywords com underscore
+    from pathlib import Path
+    nome_original = Path(nome_arquivo).stem.lower()
+    
     # Limpa o nome removendo termos de gênero
     nome_limpo = limpar_nome_para_analise(nome_arquivo)
     
@@ -97,7 +107,7 @@ def identificar_categorias(nome_arquivo: str) -> List[str]:
     for categoria, lista_keywords in MAPA_CATEGORIAS.items():
         for keyword in lista_keywords:
             # Verifica se a keyword é um match válido
-            if verificar_keyword_valida(keyword, nome_limpo):
+            if verificar_keyword_valida(keyword, nome_limpo, nome_original):
                 categorias_encontradas.add(categoria)
                 break  # Uma keyword por categoria é suficiente
     
