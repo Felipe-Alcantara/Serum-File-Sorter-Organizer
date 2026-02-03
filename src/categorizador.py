@@ -13,7 +13,12 @@ from src.config import (
     MAPA_CATEGORIAS, 
     CATEGORIA_PADRAO, 
     TERMOS_GENERO_IGNORAR,
-    KEYWORDS_CURTAS
+    KEYWORDS_CURTAS,
+    CATEGORIA_CORROMPIDOS,
+    CATEGORIA_CUSTOMIZADOS,
+    PADRAO_HASH,
+    PALAVRAS_PORTUGUES,
+    PADROES_CUSTOMIZADOS
 )
 
 
@@ -156,3 +161,74 @@ def validar_extensao(nome_arquivo: str, extensoes_validas: list) -> bool:
     """
     nome_lower = nome_arquivo.lower()
     return any(nome_lower.endswith(ext.lower()) for ext in extensoes_validas)
+
+
+def eh_arquivo_hash(nome_arquivo: str) -> bool:
+    """
+    Verifica se o arquivo tem nome tipo hash (ex: f892346344.fxp).
+    Esses arquivos provavelmente estão corrompidos ou são temporários.
+    
+    Args:
+        nome_arquivo: Nome do arquivo
+        
+    Returns:
+        True se é um arquivo com nome tipo hash
+    """
+    return bool(re.match(PADRAO_HASH, nome_arquivo, re.IGNORECASE))
+
+
+def eh_arquivo_portugues(nome_arquivo: str) -> bool:
+    """
+    Verifica se o arquivo tem nome em português (customizado pelo usuário).
+    
+    Args:
+        nome_arquivo: Nome do arquivo
+        
+    Returns:
+        True se contém palavras em português
+    """
+    nome_lower = nome_arquivo.lower()
+    return any(palavra in nome_lower for palavra in PALAVRAS_PORTUGUES)
+
+
+def eh_arquivo_padrao_customizado(nome_arquivo: str) -> bool:
+    """
+    Verifica se o arquivo segue padrões de presets customizados.
+    Ex: "future 1.fxp", "future 3d.fxp", etc.
+    
+    Args:
+        nome_arquivo: Nome do arquivo
+        
+    Returns:
+        True se segue um padrão customizado
+    """
+    nome_sem_ext = Path(nome_arquivo).stem.lower()
+    return any(re.match(padrao, nome_sem_ext, re.IGNORECASE) for padrao in PADROES_CUSTOMIZADOS)
+
+
+def identificar_categoria_especial(nome_arquivo: str) -> str:
+    """
+    Identifica se o arquivo pertence a uma categoria especial.
+    
+    Ordem de prioridade:
+    1. Arquivo com nome tipo hash -> Arquivos_Corrompidos
+    2. Arquivo em português sem categoria -> Customizados
+    3. Arquivo com padrão customizado (ex: future 1) -> Customizados
+    
+    Args:
+        nome_arquivo: Nome do arquivo
+        
+    Returns:
+        Nome da categoria especial ou None
+    """
+    if eh_arquivo_hash(nome_arquivo):
+        return CATEGORIA_CORROMPIDOS
+    
+    if eh_arquivo_portugues(nome_arquivo):
+        return CATEGORIA_CUSTOMIZADOS
+    
+    if eh_arquivo_padrao_customizado(nome_arquivo):
+        return CATEGORIA_CUSTOMIZADOS
+    
+    return None
+

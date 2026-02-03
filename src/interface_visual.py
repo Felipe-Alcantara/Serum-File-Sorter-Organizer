@@ -437,7 +437,7 @@ def exibir_categorias_visual(mapa_categorias: dict):
     print(f"  {Cores.DIM}{'─' * 60}{Cores.RESET}\n")
 
 
-def exibir_confirmacao(pasta_origem: str, pasta_destino: str, extensoes: list) -> bool:
+def exibir_confirmacao(pasta_origem: str, pasta_destino: str, extensoes: list, modo_mover: bool = False) -> bool:
     """
     Exibe painel de confirmação antes de iniciar.
     
@@ -445,16 +445,22 @@ def exibir_confirmacao(pasta_origem: str, pasta_destino: str, extensoes: list) -
         pasta_origem: Caminho da origem
         pasta_destino: Caminho do destino
         extensoes: Lista de extensões
+        modo_mover: Se True, indica que está no modo re-verificação (mover)
         
     Returns:
         True se confirmado
     """
+    if modo_mover:
+        acao_texto = f"{Cores.AMARELO_CLARO}Os arquivos serão MOVIDOS/LIMPOS da origem{Cores.RESET}"
+    else:
+        acao_texto = f"{Cores.DIM}Os arquivos serão COPIADOS (originais intactos){Cores.RESET}"
+    
     linhas = [
         f"{Cores.VERDE_CLARO}📂 Origem:{Cores.RESET}  {pasta_origem}",
         f"{Cores.AZUL_CLARO}📂 Destino:{Cores.RESET} {pasta_destino}",
         f"{Cores.AMARELO_CLARO}📄 Extensões:{Cores.RESET} {', '.join(extensoes)}",
         "",
-        f"{Cores.DIM}Os arquivos serão COPIADOS (originais intactos){Cores.RESET}"
+        acao_texto
     ]
     
     caixa_info("RESUMO DA OPERAÇÃO", linhas, "📋")
@@ -479,6 +485,8 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
     total_copias = estatisticas.get('total_copias_realizadas', total_origem)
     duplicatas_ignoradas = estatisticas.get('total_duplicatas_ignoradas', 0)
     multi_categoria = estatisticas.get('total_multi_categoria', 0)
+    total_deletados = estatisticas.get('total_deletados_origem', 0)
+    modo_mover = estatisticas.get('modo_mover', False)
     erros = len(estatisticas.get('erros', []))
     
     # Cabeçalho do resultado
@@ -489,7 +497,13 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
     print(f"  {Cores.BOLD}📊 ESTATÍSTICAS GERAIS{Cores.RESET}")
     print(f"  {Cores.DIM}{'─' * 50}{Cores.RESET}")
     print(f"  {Icones.ARQUIVO}  Arquivos analisados:          {Cores.BOLD}{Cores.VERDE_CLARO}{total_origem}{Cores.RESET}")
-    print(f"  📋  Cópias realizadas:           {Cores.BOLD}{Cores.VERDE_CLARO}{total_copias}{Cores.RESET}")
+    
+    if modo_mover:
+        print(f"  🚀  Arquivos movidos:             {Cores.BOLD}{Cores.VERDE_CLARO}{total_copias}{Cores.RESET}")
+        if total_deletados > 0:
+            print(f"  🗑️   Duplicatas limpas da origem: {Cores.BOLD}{Cores.AMARELO_CLARO}{total_deletados}{Cores.RESET}")
+    else:
+        print(f"  📋  Cópias realizadas:           {Cores.BOLD}{Cores.VERDE_CLARO}{total_copias}{Cores.RESET}")
     
     if duplicatas_ignoradas > 0:
         print(f"  {Icones.DUPLICATA}  Duplicatas ignoradas (hash):  {Cores.BOLD}{Cores.AMARELO_CLARO}{duplicatas_ignoradas}{Cores.RESET}")

@@ -72,17 +72,17 @@ def test_organizar_presets_completo():
             origem_path = Path(origem)
             destino_path = Path(destino)
             
-            # Cria presets de teste
-            (origem_path / "Deep_Bass_01.fxp").touch()
-            (origem_path / "Epic_Lead.fxp").touch()
-            (origem_path / "Lush_Pad.serumpreset").touch()
-            (origem_path / "Unknown_Sound.fxp").touch()
+            # Cria presets de teste com conteúdo único
+            (origem_path / "Deep_Bass_01.fxp").write_bytes(b"bass1")
+            (origem_path / "Epic_Lead.fxp").write_bytes(b"lead1")
+            (origem_path / "Lush_Pad.serumpreset").write_bytes(b"pad1")
+            (origem_path / "Unknown_Sound.fxp").write_bytes(b"unknown1")
             
             # Organiza
             stats = organizar_presets(origem, destino)
             
             # Verifica estatísticas
-            assert stats["total_processados"] == 4
+            assert stats["total_arquivos_origem"] == 4
             assert stats["por_categoria"]["Bass"] == 1
             assert stats["por_categoria"]["Lead"] == 1
             assert stats["por_categoria"]["Pad"] == 1
@@ -98,24 +98,26 @@ def test_organizar_presets_completo():
 
 
 def test_tratamento_duplicatas():
-    """Testa que duplicatas são renomeadas corretamente."""
+    """Testa que duplicatas de conteúdo idêntico são ignoradas (não renomeadas)."""
     with tempfile.TemporaryDirectory() as origem:
         with tempfile.TemporaryDirectory() as destino:
             origem_path = Path(origem)
             destino_path = Path(destino)
             
             # Cria presets com mesmo nome em subpastas diferentes
+            # Com conteúdo DIFERENTE para serem tratados como arquivos distintos
             (origem_path / "Pack1").mkdir()
             (origem_path / "Pack2").mkdir()
-            (origem_path / "Pack1" / "Bass_Wobble.fxp").touch()
-            (origem_path / "Pack2" / "Bass_Wobble.fxp").touch()  # Mesmo nome!
+            
+            # Escreve conteúdo diferente em cada arquivo
+            (origem_path / "Pack1" / "Bass_Wobble.fxp").write_bytes(b"conteudo1")
+            (origem_path / "Pack2" / "Bass_Wobble.fxp").write_bytes(b"conteudo2")
             
             # Organiza
             stats = organizar_presets(origem, destino)
             
-            # Verifica que ambos foram copiados
-            assert stats["total_processados"] == 2
-            assert stats["total_duplicatas"] == 1  # Um foi renomeado
+            # Verifica que ambos foram copiados (conteúdo diferente = arquivos diferentes)
+            assert stats["total_copias_realizadas"] == 2
             
             # Verifica arquivos
             bass_folder = destino_path / "Bass"
@@ -128,6 +130,160 @@ def test_tratamento_duplicatas():
     print("✅ test_tratamento_duplicatas passou")
 
 
+def test_duplicatas_conteudo_identico():
+    """Testa que duplicatas de conteúdo IDÊNTICO são ignoradas."""
+    with tempfile.TemporaryDirectory() as origem:
+        with tempfile.TemporaryDirectory() as destino:
+            origem_path = Path(origem)
+            destino_path = Path(destino)
+            
+            # Cria presets com conteúdo IDÊNTICO
+            (origem_path / "Pack1").mkdir()
+            (origem_path / "Pack2").mkdir()
+            
+            conteudo = b"mesmo conteudo binario"
+            (origem_path / "Pack1" / "Bass_Sound.fxp").write_bytes(conteudo)
+            (origem_path / "Pack2" / "Bass_Outro.fxp").write_bytes(conteudo)  # Mesmo conteúdo!
+            
+            # Organiza
+            stats = organizar_presets(origem, destino)
+            
+            # Verifica que só um foi copiado (o outro é duplicata por hash)
+            assert stats["total_copias_realizadas"] == 1
+            assert stats["total_duplicatas_ignoradas"] == 1
+            
+            # Verifica que só existe um arquivo
+            bass_folder = destino_path / "Bass"
+            arquivos = list(bass_folder.glob("*.fxp"))
+            assert len(arquivos) == 1
+            
+    print("✅ test_duplicatas_conteudo_identico passou")
+
+
+def test_reverificacao_nao_deleta_sem_categoria():
+    """
+    TESTE CRÍTICO: Garante que re-verificação NÃO deleta arquivos sem categoria.
+    
+    Este teste previne o bug que causou perda de 378 arquivos.
+    Quando rodamos re-verificação na pasta Uncategorized, arquivos que não têm
+    categoria devem PERMANECER onde estão, não ser deletados.
+    """
+    with tempfile.TemporaryDirectory() as base_dir:
+        base_path = Path(base_dir)
+        
+        # Simula estrutura após primeira organização
+        # Destino = base_path (onde ficam as categorias)
+        # Origem = base_path / Uncategorized (re-verificação)
+        
+        uncategorized = base_path / "Uncategorized"
+        uncategorized.mkdir()
+        
+        # Cria arquivos na pasta Uncategorized (arquivos sem categoria)
+        arquivo_sem_categoria = uncategorized / "Abstract_Sound.fxp"
+        arquivo_sem_categoria.write_bytes(b"conteudo sem categoria")
+        
+        arquivo_com_categoria = uncategorized / "Deep_Bass.fxp"
+        arquivo_com_categoria.write_bytes(b"conteudo bass")
+        
+        # Conta arquivos antes
+        arquivos_antes = list(uncategorized.glob("*.fxp"))
+        assert len(arquivos_antes) == 2
+        
+        # Roda re-verificação (origem=Uncategorized, destino=base)
+        stats = organizar_presets(
+            str(uncategorized),  # Origem: pasta Uncategorized
+            str(base_path),      # Destino: pasta pai (estrutura de categorias)
+            modo_mover=True      # Força modo mover (re-verificação)
+        )
+        
+        # VERIFICAÇÃO CRÍTICA: O arquivo sem categoria DEVE continuar existindo!
+        assert arquivo_sem_categoria.exists(), \
+            "ERRO CRÍTICO: Arquivo sem categoria foi deletado!"
+        
+        # O arquivo com categoria (Bass) foi movido para pasta Bass
+        assert (base_path / "Bass" / "Deep_Bass.fxp").exists(), \
+            "Arquivo com categoria deveria ter sido movido para Bass"
+        
+        # Arquivo com categoria não deve mais estar em Uncategorized
+        assert not arquivo_com_categoria.exists(), \
+            "Arquivo com categoria deveria ter sido movido"
+        
+    print("✅ test_reverificacao_nao_deleta_sem_categoria passou")
+
+
+def test_reverificacao_move_para_categoria_correta():
+    """Testa que re-verificação move arquivos para categorias corretas."""
+    with tempfile.TemporaryDirectory() as base_dir:
+        base_path = Path(base_dir)
+        
+        uncategorized = base_path / "Uncategorized"
+        uncategorized.mkdir()
+        
+        # Cria arquivos com categorias identificáveis
+        (uncategorized / "Heavy_Bass_01.fxp").write_bytes(b"bass1")
+        (uncategorized / "Bright_Lead_Synth.fxp").write_bytes(b"lead1")
+        (uncategorized / "Warm_Pad.fxp").write_bytes(b"pad1")
+        (uncategorized / "Random_Name.fxp").write_bytes(b"random")  # Sem categoria
+        
+        # Roda re-verificação
+        stats = organizar_presets(
+            str(uncategorized),
+            str(base_path),
+            modo_mover=True
+        )
+        
+        # Verifica que arquivos foram para as categorias certas
+        assert (base_path / "Bass" / "Heavy_Bass_01.fxp").exists(), \
+            f"Bass nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
+        assert (base_path / "Lead" / "Bright_Lead_Synth.fxp").exists(), \
+            f"Lead nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
+        assert (base_path / "Pad" / "Warm_Pad.fxp").exists(), \
+            f"Pad nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
+        
+        # Arquivo sem categoria PERMANECE em Uncategorized
+        assert (uncategorized / "Random_Name.fxp").exists(), \
+            f"Arquivo sem categoria deveria permanecer em Uncategorized! Uncategorized contents: {[f.name for f in uncategorized.iterdir()]}"
+        
+    print("✅ test_reverificacao_move_para_categoria_correta passou")
+
+
+def test_nao_cria_duplicatas_em_reverificacao():
+    """Testa que re-verificação não cria duplicatas de arquivos já categorizados."""
+    with tempfile.TemporaryDirectory() as base_dir:
+        base_path = Path(base_dir)
+        
+        # Cria estrutura com categoria já existente
+        bass_folder = base_path / "Bass"
+        bass_folder.mkdir()
+        uncategorized = base_path / "Uncategorized"
+        uncategorized.mkdir()
+        
+        # Arquivo já existe na categoria correta
+        conteudo = b"mesmo arquivo"
+        (bass_folder / "Deep_Bass.fxp").write_bytes(conteudo)
+        
+        # Mesmo arquivo está em Uncategorized (duplicata)
+        (uncategorized / "Deep_Bass.fxp").write_bytes(conteudo)
+        
+        # Roda re-verificação
+        stats = organizar_presets(
+            str(uncategorized),
+            str(base_path),
+            modo_mover=True
+        )
+        
+        # Não deve ter criado duplicata
+        arquivos_bass = list(bass_folder.glob("*.fxp"))
+        assert len(arquivos_bass) == 1, \
+            f"Deveria ter só 1 arquivo em Bass, encontrou {len(arquivos_bass)}"
+        
+        # Arquivo duplicado foi removido de Uncategorized (ou contabilizado como duplicata)
+        assert stats["total_duplicatas_ignoradas"] >= 1 or \
+               stats.get("total_deletados_origem", 0) >= 1
+        
+    print("✅ test_nao_cria_duplicatas_em_reverificacao passou")
+
+
 def executar_testes_manipulador():
     """Executa todos os testes do manipulador de arquivos."""
     print("\n📁 TESTES DO MANIPULADOR DE ARQUIVOS")
@@ -138,6 +294,10 @@ def executar_testes_manipulador():
         test_buscar_presets_recursivo,
         test_organizar_presets_completo,
         test_tratamento_duplicatas,
+        test_duplicatas_conteudo_identico,
+        test_reverificacao_nao_deleta_sem_categoria,
+        test_reverificacao_move_para_categoria_correta,
+        test_nao_cria_duplicatas_em_reverificacao,
     ]
     
     passou = 0

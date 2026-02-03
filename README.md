@@ -14,7 +14,7 @@ Automatize a organização da sua biblioteca de presets do sintetizador **Xfer S
 | 📁 **Organização automática** | Categoriza por tipo (Bass, Lead, Pad, etc.) |
 | 🏷️ **Detecção inteligente** | Analisa keywords no nome do arquivo |
 | 🔀 **Multi-categorização** | Arquivos podem ir para múltiplas categorias |
-| 🔒 **100% seguro** | Apenas copia arquivos, nunca move ou deleta |
+| 🔒 **Modo seguro** | Copia por padrão, move apenas em re-verificação |
 | 🔄 **Detecção de duplicatas** | Hash MD5 evita cópias desnecessárias |
 | 🎵 **Ignora gêneros** | "Future Bass" não categoriza como Bass |
 | 📊 **Relatório visual** | Interface colorida com estatísticas |
@@ -44,6 +44,8 @@ O programa reconhece **16 categorias** de instrumentos:
 | **Chords** | chord, stab, harmonic |
 | **Guitar** | guitar, acoustic, electric |
 | **Dubstep** | dubstep, riddim, tearout, wub |
+| **Arquivos_Corrompidos** | *(Nomes hexadecimais/hash)* |
+| **Customizados** | *(Nomes em português)* |
 
 ---
 
@@ -131,19 +133,30 @@ Serum-File-Sorter-Organizer/
 
 ## 🧪 Testes
 
-O projeto inclui **13 testes unitários** cobrindo:
-- Categorização por keywords
-- Tratamento de gêneros musicais
+O projeto inclui **21 testes unitários** cobrindo:
+
+### Categorizador (13 testes)
+- Categorização por keywords (Bass, Lead, Pad, etc.)
+- Tratamento de gêneros musicais (Future Bass, Drum and Bass)
 - Multi-categorização
 - Keywords curtas com word boundary
 - Validação de extensões
 
-```bash
-# Executar testes
-python tests/test_categorizador.py
+### Manipulador de Arquivos (8 testes)
+- Geração de nomes únicos
+- Busca recursiva de presets
+- Organização completa
+- Tratamento de duplicatas (nome e hash)
+- **Re-verificação segura** (não deleta arquivos sem categoria)
+- Prevenção de duplicatas em re-verificação
 
-# Ou com pytest (se instalado)
-python -m pytest tests/ -v
+```bash
+# Executar todos os testes
+python utils/run_tests.py
+
+# Ou individualmente
+python -m tests.test_categorizador
+python -m tests.test_manipulador
 ```
 
 ### Utilitários de Teste
@@ -187,7 +200,7 @@ python utils/testar_categorizacao.py
   
      • ✅ Testado com milhares de presets reais
      • ✅ Milhares de padrões de nomes diferentes validados
-     • ✅ 13 testes unitários automatizados (todos passando)
+     • ✅ 21 testes unitários automatizados (todos passando)
 ```
 
 ---
@@ -212,11 +225,13 @@ KEYWORDS_CURTAS = {"k1", "k2", "k3"}
 
 | Garantia | Descrição |
 |----------|-----------|
-| ✅ Não modifica originais | Arquivos de origem permanecem intactos |
+| ✅ Modo cópia padrão | Arquivos de origem permanecem intactos |
 | ✅ Preserva metadados | Usa `shutil.copy2` para manter timestamps |
 | ✅ Hash MD5 | Detecta duplicatas pelo conteúdo, não nome |
 | ✅ Idempotente | Execute quantas vezes quiser sem problemas |
 | ✅ Validação | Confirma caminhos antes de executar |
+| ✅ Re-verificação segura | Arquivos sem categoria nunca são deletados |
+| ✅ Verificação de mesmo arquivo | Detecta quando origem e destino são o mesmo |
 
 ---
 

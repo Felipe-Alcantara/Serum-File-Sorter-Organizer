@@ -24,9 +24,9 @@ from pathlib import Path
 # Adiciona o diretório atual ao path para importar módulos locais
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.manipulador_arquivos import organizar_presets, buscar_presets_recursivo
+from src.manipulador_arquivos import organizar_presets, buscar_presets_recursivo, detectar_modo_reverificacao
 from src.categorizador import obter_todas_categorias
-from src.config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS
+from src.config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS, CATEGORIA_CORROMPIDOS, CATEGORIA_CUSTOMIZADOS
 from src.interface_visual import (
     Cores, Icones, 
     exibir_banner_principal, exibir_categorias_visual,
@@ -315,8 +315,27 @@ def main():
             deve_existir=False
         )
     
+    # Detecta se é modo de re-verificação
+    modo_reverificacao = detectar_modo_reverificacao(pasta_origem, pasta_destino)
+    
+    if modo_reverificacao:
+        print()
+        print(f"  {Cores.AMARELO_CLARO}⚠️  MODO RE-VERIFICAÇÃO DETECTADO{Cores.RESET}")
+        print(f"  {Cores.DIM}─────────────────────────────────────────────────────────────────{Cores.RESET}")
+        print(f"  {Cores.CIANO_CLARO}📁 Origem: Uncategorized{Cores.RESET}")
+        print(f"  {Cores.CIANO_CLARO}📁 Destino: Pasta pai{Cores.RESET}")
+        print()
+        print(f"  {Cores.AMARELO_CLARO}⚡ AÇÃO: Arquivos categorizados serão MOVIDOS.{Cores.RESET}")
+        print(f"  {Cores.AMARELO_CLARO}🗑️  Duplicatas (já existem no destino) serão REMOVIDAS da origem.{Cores.RESET}")
+        print(f"  {Cores.DIM}Arquivos que agora têm categoria sairão de Uncategorized.{Cores.RESET}")
+        print()
+        print(f"  {Cores.BOLD}Categorias especiais:{Cores.RESET}")
+        print(f"      🔧 {CATEGORIA_CORROMPIDOS} - Arquivos com nomes tipo hash (f892346344.fxp)")
+        print(f"      🎨 {CATEGORIA_CUSTOMIZADOS} - Arquivos com nomes em português")
+        print()
+    
     # Confirmação do usuário
-    if not exibir_confirmacao(pasta_origem, pasta_destino, EXTENSOES_SUPORTADAS):
+    if not exibir_confirmacao(pasta_origem, pasta_destino, EXTENSOES_SUPORTADAS, modo_reverificacao):
         print(f"\n  {Icones.ERRO} {erro('Operação cancelada pelo usuário.')}")
         print(f"  {Cores.DIM}Nenhum arquivo foi modificado.{Cores.RESET}\n")
         return

@@ -80,3 +80,8 @@ output/
 destino/
 organized/
 *.log
+
+# Temporary files
+arquivos_perdidos.txt
+lista_arquivos_*.txt
+debug_*.py

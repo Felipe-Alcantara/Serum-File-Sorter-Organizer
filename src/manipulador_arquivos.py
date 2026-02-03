@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Generator, Tuple, Callable, Optional, List, Set, Dict
 
 from src.config import EXTENSOES_SUPORTADAS, CATEGORIA_PADRAO
-from src.categorizador import identificar_categorias, validar_extensao
+from src.categorizador import identificar_categorias, validar_extensao, identificar_categoria_especial
 
 
 def calcular_hash_arquivo(caminho_arquivo: Path, tamanho_bloco: int = 65536) -> str:
@@ -98,19 +98,22 @@ def gerar_nome_unico(caminho_destino: Path) -> Path:
             raise RuntimeError(f"Muitas duplicatas para o arquivo: {nome_base}")
 
 
-def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path) -> Tuple[Path, bool]:
+def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path, mover: bool = False, deletar_se_existe: bool = False) -> Tuple[Path, bool, bool]:
     """
-    Copia um preset para a pasta de destino de forma segura.
+    Copia ou move um preset para a pasta de destino de forma segura.
     
-    - Preserva metadados usando shutil.copy2
-    - Nunca sobrescreve arquivos existentes
+    - Preserva metadados usando shutil.copy2 ou shutil.move
+    - Gera nome único se arquivo com mesmo nome já existir
+    - Pode deletar origem se já existe no destino (modo re-verificação, comparando hash)
     
     Args:
-        arquivo_origem: Path do arquivo a ser copiado
+        arquivo_origem: Path do arquivo a ser copiado/movido
         pasta_destino: Path da pasta de destino
+        mover: Se True, move o arquivo em vez de copiar
+        deletar_se_existe: Se True e arquivo IDÊNTICO já existe no destino, deleta da origem
         
     Returns:
-        Tuple com (caminho_final, ja_existia)
+        Tuple com (caminho_final, ja_existia, foi_deletado_origem)
     """
     # Cria a pasta de destino se não existir
     pasta_destino.mkdir(parents=True, exist_ok=True)
@@ -118,14 +121,63 @@ def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path) -> Tuple[Pat
     # Define caminho de destino
     caminho_destino = pasta_destino / arquivo_origem.name
     
-    # Se já existe, não copia (será tratado como duplicata)
+    # Se já existe no destino
     if caminho_destino.exists():
-        return caminho_destino, True
+        # Verifica se são o mesmo arquivo (mesmo caminho absoluto)
+        if arquivo_origem.resolve() == caminho_destino.resolve():
+            # É o mesmo arquivo - não faz nada
+            return caminho_destino, True, False
+        
+        # Compara hash para verificar se é duplicata real
+        hash_origem = calcular_hash_arquivo(arquivo_origem)
+        hash_destino = calcular_hash_arquivo(caminho_destino)
+        
+        if hash_origem == hash_destino:
+            # Conteúdo idêntico - é duplicata real
+            if deletar_se_existe and arquivo_origem.exists():
+                arquivo_origem.unlink()
+                return caminho_destino, True, True  # ja_existia=True, foi_deletado=True
+            return caminho_destino, True, False
+        else:
+            # Nome igual mas conteúdo diferente - gera nome único
+            caminho_destino = gerar_nome_unico(caminho_destino)
     
-    # Copia preservando metadados
-    shutil.copy2(arquivo_origem, caminho_destino)
+    # Copia ou move preservando metadados
+    if mover:
+        shutil.move(str(arquivo_origem), str(caminho_destino))
+    else:
+        shutil.copy2(arquivo_origem, caminho_destino)
     
-    return caminho_destino, False
+    return caminho_destino, False, False
+
+
+def detectar_modo_reverificacao(pasta_origem: str, pasta_destino: str) -> bool:
+    """
+    Detecta se é um modo de re-verificação (reorganização).
+    
+    É re-verificação quando:
+    - Pasta de origem termina com "Uncategorized"
+    - Pasta de destino é o diretório pai da origem
+    
+    Args:
+        pasta_origem: Caminho da pasta de origem
+        pasta_destino: Caminho da pasta de destino
+        
+    Returns:
+        True se é modo de re-verificação (deve MOVER, não copiar)
+    """
+    origem = Path(pasta_origem).resolve()
+    destino = Path(pasta_destino).resolve()
+    
+    # Verifica se origem termina com "Uncategorized"
+    if origem.name.lower() != "uncategorized":
+        return False
+    
+    # Verifica se destino é o pai da origem
+    if origem.parent == destino:
+        return True
+    
+    return False
 
 
 def contar_presets_com_progresso(
@@ -159,7 +211,8 @@ def organizar_presets(
     pasta_destino: str,
     callback_progresso: Optional[Callable] = None,
     callback_arquivo: Optional[Callable] = None,
-    callback_scan: Optional[Callable] = None
+    callback_scan: Optional[Callable] = None,
+    modo_mover: bool = None
 ) -> dict:
     """
     Função principal que organiza todos os presets da origem para o destino.
@@ -167,6 +220,8 @@ def organizar_presets(
     CARACTERÍSTICAS:
     - Multi-categorização: arquivos podem ir para múltiplas categorias
     - Detecção de duplicatas por hash: arquivos idênticos são ignorados
+    - Categorias especiais: Hash -> Arquivos_Corrompidos, Português -> Customizados
+    - Modo re-verificação: detecta automaticamente se deve mover (origem=Uncategorized)
     - Nunca cria cópias desnecessárias
     
     Args:
@@ -175,10 +230,15 @@ def organizar_presets(
         callback_progresso: Função chamada com (atual, total) para atualizar progresso
         callback_arquivo: Função chamada com (arquivo, categorias, info)
         callback_scan: Função chamada durante o scan com (contador)
+        modo_mover: Se True, move arquivos. Se None, detecta automaticamente.
         
     Returns:
         Dicionário com estatísticas da operação
     """
+    # Detecta se é modo de re-verificação (deve mover)
+    if modo_mover is None:
+        modo_mover = detectar_modo_reverificacao(pasta_origem, pasta_destino)
+    
     # Inicializa estatísticas
     estatisticas = {
         "total_arquivos_origem": 0,
@@ -187,7 +247,8 @@ def organizar_presets(
         "total_multi_categoria": 0,
         "por_categoria": {},
         "erros": [],
-        "arquivos_processados": []
+        "arquivos_processados": [],
+        "modo_mover": modo_mover  # Registra o modo usado
     }
     
     pasta_destino_path = Path(pasta_destino)
@@ -223,22 +284,65 @@ def organizar_presets(
                     )
                 continue
             
-            # Identifica TODAS as categorias aplicáveis
+            # Primeiro, verifica categorias especiais (hash, português)
+            categoria_especial = identificar_categoria_especial(arquivo_preset.name)
+            
+            # Identifica TODAS as categorias aplicáveis (keywords)
             categorias = identificar_categorias(arquivo_preset.name)
             
-            # Se nenhuma categoria encontrada, vai para Uncategorized
+            # Se nenhuma categoria por keyword encontrada
             if not categorias:
-                categorias = [CATEGORIA_PADRAO]
+                if categoria_especial:
+                    # Usa categoria especial (Arquivos_Corrompidos ou Customizados)
+                    categorias = [categoria_especial]
+                else:
+                    # Vai para Uncategorized
+                    categorias = [CATEGORIA_PADRAO]
             
             # Se múltiplas categorias, registra
             if len(categorias) > 1:
                 estatisticas["total_multi_categoria"] += 1
             
-            # Copia para cada categoria encontrada
+            # CORREÇÃO: Se a única categoria é Uncategorized e estamos em modo mover
+            # da pasta Uncategorized, não faz nada (arquivo já está no lugar certo)
+            if modo_mover and categorias == [CATEGORIA_PADRAO]:
+                # Arquivo sem categoria, permanece onde está
+                if CATEGORIA_PADRAO not in estatisticas["por_categoria"]:
+                    estatisticas["por_categoria"][CATEGORIA_PADRAO] = 0
+                estatisticas["por_categoria"][CATEGORIA_PADRAO] += 1
+                
+                if callback_arquivo:
+                    callback_arquivo(
+                        arquivo_preset.name,
+                        categorias,
+                        {
+                            "tipo": "processado",
+                            "multi": False,
+                            "contador": contador,
+                            "total": total_arquivos,
+                            "movido": False
+                        }
+                    )
+                
+                if callback_progresso:
+                    callback_progresso(contador, total_arquivos)
+                continue  # Pula para o próximo arquivo
+            
+            # Copia/Move para cada categoria encontrada
             primeiro_destino = None
+            arquivo_deletado = False
             for categoria in categorias:
                 pasta_categoria = pasta_destino_path / categoria
-                caminho_final, ja_existia = copiar_preset_seguro(arquivo_preset, pasta_categoria)
+                caminho_final, ja_existia, foi_deletado = copiar_preset_seguro(
+                    arquivo_preset, 
+                    pasta_categoria, 
+                    mover=(modo_mover and primeiro_destino is None),  # Só move na primeira categoria
+                    deletar_se_existe=(modo_mover and primeiro_destino is None)  # Deleta se já existe (re-verificação)
+                )
+                
+                if foi_deletado:
+                    arquivo_deletado = True
+                    estatisticas["total_deletados_origem"] = estatisticas.get("total_deletados_origem", 0) + 1
                 
                 if not ja_existia:
                     estatisticas["total_copias_realizadas"] += 1
@@ -271,7 +375,8 @@ def organizar_presets(
                         "tipo": "processado",
                         "multi": len(categorias) > 1,
                         "contador": contador,
-                        "total": total_arquivos
+                        "total": total_arquivos,
+                        "movido": modo_mover
                     }
                 )
             
