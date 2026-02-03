@@ -13,7 +13,7 @@ from src.config import (
     MAPA_CATEGORIAS, 
     CATEGORIA_PADRAO, 
     TERMOS_GENERO_IGNORAR,
-    TAMANHO_MINIMO_KEYWORD
+    KEYWORDS_CURTAS
 )
 
 
@@ -50,7 +50,8 @@ def verificar_keyword_valida(keyword: str, nome: str) -> bool:
     """
     Verifica se uma keyword é um match válido no nome.
     
-    Evita falsos positivos verificando word boundaries.
+    Keywords curtas (definidas em KEYWORDS_CURTAS) usam word boundary estrito.
+    Keywords maiores podem ser substring.
     
     Args:
         keyword: A keyword a procurar
@@ -59,14 +60,17 @@ def verificar_keyword_valida(keyword: str, nome: str) -> bool:
     Returns:
         True se é um match válido
     """
-    # Keywords muito curtas precisam de word boundary
-    if len(keyword) < 4:
+    keyword_lower = keyword.lower()
+    
+    # Keywords definidas como curtas precisam de word boundary estrito
+    if keyword_lower in KEYWORDS_CURTAS:
         # Usa regex para garantir que é uma palavra completa
-        pattern = r'\b' + re.escape(keyword) + r'\b'
+        # Word boundary aceita separadores como _, -, espaço
+        pattern = r'(?:^|[\s_\-])' + re.escape(keyword_lower) + r'(?:[\s_\-]|$)'
         return bool(re.search(pattern, nome, re.IGNORECASE))
     else:
-        # Keywords maiores podem ser substring
-        return keyword.lower() in nome
+        # Keywords maiores/normais podem ser substring
+        return keyword_lower in nome
 
 
 def identificar_categorias(nome_arquivo: str) -> List[str]:
@@ -92,10 +96,6 @@ def identificar_categorias(nome_arquivo: str) -> List[str]:
     # Itera sobre cada categoria e suas keywords
     for categoria, lista_keywords in MAPA_CATEGORIAS.items():
         for keyword in lista_keywords:
-            # Ignora keywords muito curtas
-            if len(keyword) < TAMANHO_MINIMO_KEYWORD:
-                continue
-                
             # Verifica se a keyword é um match válido
             if verificar_keyword_valida(keyword, nome_limpo):
                 categorias_encontradas.add(categoria)

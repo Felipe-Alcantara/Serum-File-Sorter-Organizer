@@ -27,7 +27,7 @@ def test_identificar_categoria_bass():
 def test_identificar_categoria_lead():
     """Testa identificação de presets de Lead."""
     assert "Lead" in identificar_categorias("Epic_Lead_01.fxp")
-    assert "Lead" in identificar_categorias("LD_Screamer.fxp")
+    assert "Lead" in identificar_categorias("LD_Screamer.fxp")  # Keyword curta LD
     assert "Lead" in identificar_categorias("Main_Melody.serumpreset")
     print("✅ test_identificar_categoria_lead passou")
 
@@ -36,7 +36,7 @@ def test_identificar_categoria_pad():
     """Testa identificação de presets de Pad."""
     assert "Pad" in identificar_categorias("Lush_Pad_Soft.fxp")
     assert "Pad" in identificar_categorias("Atmosphere_Dark.fxp")
-    assert "Pad" in identificar_categorias("PD_Dreamy.serumpreset")
+    assert "Pad" in identificar_categorias("PD_Dreamy.serumpreset")  # Keyword curta PD
     print("✅ test_identificar_categoria_pad passou")
 
 
@@ -129,6 +129,47 @@ def test_compatibilidade_identificar_categoria():
     print("✅ test_compatibilidade_identificar_categoria passou")
 
 
+def test_keywords_curtas_funcionam():
+    """Testa que keywords curtas (2-3 chars) funcionam corretamente."""
+    # BS = Bass
+    assert "Bass" in identificar_categorias("TSP_S2PH_BS_alum.fxp")
+    assert "Bass" in identificar_categorias("BS_Heavy.fxp")
+    
+    # LD = Lead
+    assert "Lead" in identificar_categorias("LD_Screamer.fxp")
+    assert "Lead" in identificar_categorias("Synth_LD_01.fxp")
+    
+    # PD = Pad
+    assert "Pad" in identificar_categorias("PD_Dreamy.fxp")
+    assert "Pad" in identificar_categorias("Soft_PD_Lush.fxp")
+    
+    # FX
+    assert "FX" in identificar_categorias("FX_Riser.fxp")
+    assert "FX" in identificar_categorias("Sweep_FX_01.fxp")
+    
+    # SEQ = Arp_Seq
+    assert "Arp_Seq" in identificar_categorias("SEQ_Pattern.fxp")
+    
+    print("✅ test_keywords_curtas_funcionam passou")
+
+
+def test_keywords_curtas_word_boundary():
+    """Testa que keywords curtas NÃO fazem match quando são parte de outra palavra."""
+    # "bs" não deve fazer match em "absoluto" ou "jobs"
+    cats = identificar_categorias("Absolute_Power.fxp")
+    assert "Bass" not in cats, f"'Bass' não deveria estar em {cats} - 'bs' em 'Absolute'"
+    
+    # "ld" não deve fazer match em "world" ou "bold"
+    cats = identificar_categorias("World_Sound.fxp")
+    assert "Lead" not in cats, f"'Lead' não deveria estar em {cats} - 'ld' em 'World'"
+    
+    # "pd" não deve fazer match em "update"
+    cats = identificar_categorias("Updated_Sound.fxp")
+    assert "Pad" not in cats, f"'Pad' não deveria estar em {cats} - 'pd' em 'Updated'"
+    
+    print("✅ test_keywords_curtas_word_boundary passou")
+
+
 def executar_testes_categorizador():
     """Executa todos os testes do categorizador."""
     print("\n📂 TESTES DO CATEGORIZADOR")
@@ -146,6 +187,8 @@ def executar_testes_categorizador():
         test_extensao_fxp_nao_afeta_fx,
         test_validar_extensao,
         test_compatibilidade_identificar_categoria,
+        test_keywords_curtas_funcionam,
+        test_keywords_curtas_word_boundary,
     ]
     
     passou = 0
