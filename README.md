@@ -12,6 +12,7 @@ Automatize a organização da sua biblioteca de presets do sintetizador **Xfer S
 |----------------|-----------|
 | 🔍 **Busca recursiva** | Encontra presets em todas as subpastas |
 | 📁 **Organização automática** | Categoriza por tipo (Bass, Lead, Pad, etc.) |
+| 📂 **Múltiplas origens** | Organize de várias pastas ao mesmo tempo |
 | 🏷️ **Detecção inteligente** | Analisa keywords no nome do arquivo |
 | 🔀 **Multi-categorização** | Arquivos podem ir para múltiplas categorias |
 | 🔒 **Modo seguro** | Copia por padrão, move apenas em re-verificação |
@@ -23,26 +24,27 @@ Automatize a organização da sua biblioteca de presets do sintetizador **Xfer S
 
 ## 📂 Categorias Suportadas
 
-O programa reconhece **16 categorias** de instrumentos:
+O programa reconhece **19 categorias** de instrumentos:
 
 | Categoria | Exemplos de Keywords |
 |-----------|---------------------|
 | **Bass** | bass, 808, sub, growl, reese, wobble, lowend, rps |
-| **Lead** | lead, solo, hook, melody, screamer, mono |
+| **Lead** | lead, solo, hook, melody, screamer, whistle |
 | **Pluck** | pluck, pizz, staccato, mallet, marimba |
-| **Bell** | bell, chime, glockenspiel, tinkle |
+| **Bell** | bell, chime, glockenspiel, musicbox, tines |
 | **Piano/Keys** | piano, keys, organ, rhodes, clav, wurlitzer |
 | **Pad** | pad, atmosphere, drone, ambient, texture |
-| **Synth** | synth, poly, analog, vintage, supersaw |
+| **Synth** | synth, poly, analog, vintage, supersaw, hardsync |
 | **Acid** | acid, 303, tb303, squelch |
 | **Zap** | zap, laser, pew |
 | **Drums** | drum, kick, snare, clap, hat, perc, timpani |
 | **Arp/Seq** | arp, sequence, pattern, arpeggio, gate |
-| **FX** | sfx, noise, riser, impact, sweep, whoosh, glitch |
+| **FX** | sfx, noise, riser, impact, sweep, glitch, serumfx, vocoder |
 | **Vocals** | vocal, vox, choir, voice, formant |
 | **Strings/Orch** | string, violin, brass, flute, cinematic, ensemble |
 | **Chords** | chord, stab, harmonic |
 | **Guitar** | guitar, acoustic, electric |
+| **Instrument** | kalimba, sitar, ethnic, world, sax |
 | **Dubstep** | dubstep, riddim, tearout, wub |
 | **Arquivos_Corrompidos** | *(Nomes hexadecimais/hash)* |
 | **Customizados** | *(Nomes em português)* |
@@ -85,15 +87,40 @@ python main.py
 O programa exibirá:
 1. Instruções de uso
 2. Informações de segurança
-3. Solicitação dos caminhos de origem e destino
-4. Confirmação antes de executar
-5. Progresso em tempo real
-6. Relatório final com estatísticas
+3. Solicitação das pastas de origem (aceita múltiplas!)
+4. Solicitação da pasta de destino
+5. Confirmação antes de executar
+6. Progresso em tempo real
+7. Relatório final com estatísticas
+
+### Múltiplas Pastas de Origem
+O programa aceita **múltiplas pastas de origem**! Útil quando seus presets estão espalhados em diferentes locais:
+
+```
+📂 PASTAS DE ORIGEM
+  Adicione uma ou mais pastas onde estão seus presets.
+  Digite 'ok' quando terminar de adicionar.
+
+  📁 Pasta 1: C:\Downloads\Pack 1
+  ✅ Adicionada
+
+  📁 Pasta 2: D:\Presets\Pack 2
+  ✅ Adicionada
+
+  📁 Pasta 3: ok
+  
+  ✅ 2 pastas selecionadas
+```
+
+**Detecção de duplicatas entre origens:** Se o mesmo preset existir em diferentes pastas, ele só será copiado uma vez (comparação por hash MD5).
 
 ### Modo Pré-configurado
 Edite as variáveis no topo do arquivo `main.py`:
 ```python
-PASTA_ORIGEM = "C:/Users/SeuNome/Downloads/Serum Presets"
+PASTAS_ORIGEM = [
+    "C:/Users/SeuNome/Downloads/Serum Presets",
+    "D:/Presets/Pack Novo"
+]
 PASTA_DESTINO = "C:/Users/SeuNome/Documents/Serum Organized"
 ```
 
@@ -133,7 +160,7 @@ Serum-File-Sorter-Organizer/
 
 ## 🧪 Testes
 
-O projeto inclui **21 testes unitários** cobrindo:
+O projeto inclui **22 testes unitários** cobrindo:
 
 ### Categorizador (13 testes)
 - Categorização por keywords (Bass, Lead, Pad, etc.)
@@ -142,13 +169,14 @@ O projeto inclui **21 testes unitários** cobrindo:
 - Keywords curtas com word boundary
 - Validação de extensões
 
-### Manipulador de Arquivos (8 testes)
+### Manipulador de Arquivos (9 testes)
 - Geração de nomes únicos
 - Busca recursiva de presets
 - Organização completa
 - Tratamento de duplicatas (nome e hash)
 - **Re-verificação segura** (não deleta arquivos sem categoria)
 - Prevenção de duplicatas em re-verificação
+- **Múltiplas origens** com detecção de duplicatas entre pastas
 
 ```bash
 # Executar todos os testes
@@ -200,7 +228,7 @@ python utils/testar_categorizacao.py
   
      • ✅ Testado com milhares de presets reais
      • ✅ Milhares de padrões de nomes diferentes validados
-     • ✅ 21 testes unitários automatizados (todos passando)
+     • ✅ 22 testes unitários automatizados (todos passando)
 ```
 
 ---

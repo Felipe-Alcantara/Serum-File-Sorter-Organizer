@@ -24,7 +24,7 @@ from pathlib import Path
 # Adiciona o diretório atual ao path para importar módulos locais
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.manipulador_arquivos import organizar_presets, buscar_presets_recursivo, detectar_modo_reverificacao
+from src.manipulador_arquivos import organizar_presets, organizar_presets_multiplas_origens, buscar_presets_recursivo, detectar_modo_reverificacao
 from src.categorizador import obter_todas_categorias
 from src.config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS, CATEGORIA_CORROMPIDOS, CATEGORIA_CUSTOMIZADOS
 from src.interface_visual import (
@@ -42,12 +42,70 @@ from src.interface_visual import (
 # ============================================================================
 # CONFIGURAÇÃO - Edite aqui ou deixe vazio para input via terminal
 # ============================================================================
-PASTA_ORIGEM = ""   # Ex: "C:/Users/SeuNome/Downloads/Serum Presets"
+PASTAS_ORIGEM = []  # Lista de pastas. Ex: ["C:/Pasta1", "C:/Pasta2"]
 PASTA_DESTINO = ""  # Ex: "C:/Users/SeuNome/Documents/Serum Organized"
 
 # Opções de exibição
 MODO_VERBOSE = True   # True = mostra cada arquivo, False = apenas progresso
 # ============================================================================
+
+
+def solicitar_caminhos_origem() -> list:
+    """
+    Solicita múltiplas pastas de origem ao usuário.
+    
+    Returns:
+        Lista de caminhos validados
+    """
+    print(f"\n  {Cores.BOLD}{Cores.CIANO_CLARO}📁 PASTAS DE ORIGEM{Cores.RESET}")
+    print(f"  {Cores.DIM}Adicione uma ou mais pastas onde estão seus presets.{Cores.RESET}")
+    print(f"  {Cores.DIM}Digite 'ok' quando terminar de adicionar.{Cores.RESET}")
+    print()
+    
+    pastas = []
+    contador = 1
+    
+    while True:
+        print(f"  {Icones.PASTA} {Cores.BOLD}Pasta {contador}{Cores.RESET} (ou 'ok' para continuar):")
+        entrada = input(f"  {Cores.CIANO_CLARO}>{Cores.RESET} ").strip()
+        
+        # Remove aspas se o usuário colar caminho com aspas
+        entrada = entrada.strip('"').strip("'")
+        
+        # Verifica se quer finalizar
+        if entrada.lower() == 'ok':
+            if not pastas:
+                print(f"  {Icones.ERRO} {erro('Adicione pelo menos uma pasta de origem.')}")
+                continue
+            break
+        
+        if not entrada:
+            print(f"  {Icones.AVISO} {aviso('Caminho vazio. Digite um caminho ou \"ok\" para continuar.')}")
+            continue
+        
+        # Expande ~ para pasta do usuário se usado
+        caminho = os.path.expanduser(entrada)
+        
+        # Valida o caminho
+        if not os.path.exists(caminho):
+            print(f"  {Icones.ERRO} {erro('Caminho não encontrado:')} {dim(caminho)}")
+            continue
+        if not os.path.isdir(caminho):
+            print(f"  {Icones.ERRO} {erro('Não é uma pasta válida:')} {dim(caminho)}")
+            continue
+        
+        # Verifica se já foi adicionada
+        caminho_absoluto = os.path.abspath(caminho)
+        if caminho_absoluto in [os.path.abspath(p) for p in pastas]:
+            print(f"  {Icones.AVISO} {aviso('Esta pasta já foi adicionada.')}")
+            continue
+        
+        pastas.append(caminho)
+        print(f"  {Icones.SUCESSO} {sucesso('Adicionada:')} {caminho}")
+        contador += 1
+        print()
+    
+    return pastas
 
 
 def solicitar_caminho(mensagem: str, deve_existir: bool = True) -> str:
@@ -88,20 +146,19 @@ def solicitar_caminho(mensagem: str, deve_existir: bool = True) -> str:
         return caminho
 
 
-def fase_busca_presets(pasta_origem: str) -> tuple:
+def fase_busca_presets(pastas_origem: list) -> tuple:
     """
-    Fase 1: Busca e conta os presets na origem.
+    Fase 1: Busca e conta os presets em todas as origens.
     
     Args:
-        pasta_origem: Caminho da pasta de origem
+        pastas_origem: Lista de caminhos das pastas de origem
         
     Returns:
         Tuple com (lista_de_arquivos, tempo_busca)
     """
-    log_fase(1, "ANÁLISE DA ORIGEM", "Escaneando pasta e subpastas em busca de presets...")
+    log_fase(1, "ANÁLISE DAS ORIGENS", f"Escaneando {len(pastas_origem)} pasta(s) em busca de presets...")
     
     print(f"  {Icones.BUSCAR} Buscando arquivos {Cores.CIANO_CLARO}.fxp{Cores.RESET} e {Cores.CIANO_CLARO}.SerumPreset{Cores.RESET}...")
-    print(f"  {Icones.PASTA} Origem: {dim(pasta_origem)}")
     print()
     
     inicio = time.time()
@@ -111,12 +168,15 @@ def fase_busca_presets(pasta_origem: str) -> tuple:
     spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     spin_index = 0
     
-    for arquivo in buscar_presets_recursivo(pasta_origem):
-        arquivos.append(arquivo)
-        # Atualiza a cada 10 arquivos para não sobrecarregar
-        if len(arquivos) % 10 == 0:
-            atualizar_linha(f"  {Cores.CIANO_CLARO}{spinner[spin_index]}{Cores.RESET} Escaneando... {Cores.VERDE_CLARO}{len(arquivos)}{Cores.RESET} presets encontrados")
-            spin_index = (spin_index + 1) % len(spinner)
+    for idx, pasta_origem in enumerate(pastas_origem, 1):
+        print(f"  {Cores.CIANO_CLARO}[{idx}/{len(pastas_origem)}]{Cores.RESET} {dim(pasta_origem)}")
+        
+        for arquivo in buscar_presets_recursivo(pasta_origem):
+            arquivos.append(arquivo)
+            # Atualiza a cada 10 arquivos para não sobrecarregar
+            if len(arquivos) % 10 == 0:
+                atualizar_linha(f"  {Cores.CIANO_CLARO}{spinner[spin_index]}{Cores.RESET} Escaneando... {Cores.VERDE_CLARO}{len(arquivos)}{Cores.RESET} presets encontrados")
+                spin_index = (spin_index + 1) % len(spinner)
     
     total = len(arquivos)
     
@@ -130,19 +190,19 @@ def fase_busca_presets(pasta_origem: str) -> tuple:
     return arquivos, tempo_busca
 
 
-def fase_organizacao(pasta_origem: str, pasta_destino: str, total_arquivos: int) -> tuple:
+def fase_organizacao(pastas_origem: list, pasta_destino: str, total_arquivos: int) -> tuple:
     """
     Fase 2: Organiza os presets nas categorias.
     
     Args:
-        pasta_origem: Caminho da origem
+        pastas_origem: Lista de caminhos de origem
         pasta_destino: Caminho do destino
         total_arquivos: Total de arquivos a processar
         
     Returns:
         Tuple com (estatisticas, tempo_execucao)
     """
-    log_fase(2, "ORGANIZANDO PRESETS", f"Copiando e categorizando {total_arquivos} arquivos...")
+    log_fase(2, "ORGANIZANDO PRESETS", f"Copiando e categorizando {total_arquivos} arquivos de {len(pastas_origem)} pasta(s)...")
     
     print(f"  {Icones.INFO} {info('Legenda:')}")
     print(f"      {Cores.VERDE_CLARO}→{Cores.RESET} Arquivo copiado com sucesso")
@@ -200,11 +260,23 @@ def fase_organizacao(pasta_origem: str, pasta_destino: str, total_arquivos: int)
     
     inicio = time.time()
     
-    estatisticas = organizar_presets(
-        pasta_origem, 
-        pasta_destino,
-        callback_arquivo=callback_arquivo
-    )
+    # Usa função de múltiplas origens se houver mais de uma pasta
+    if len(pastas_origem) > 1:
+        def callback_pasta(pasta, idx, total_pastas):
+            print(f"\n  {Cores.MAGENTA_CLARO}📂 [{idx}/{total_pastas}]{Cores.RESET} Processando: {dim(pasta)}")
+        
+        estatisticas = organizar_presets_multiplas_origens(
+            pastas_origem, 
+            pasta_destino,
+            callback_arquivo=callback_arquivo,
+            callback_pasta=callback_pasta
+        )
+    else:
+        estatisticas = organizar_presets(
+            pastas_origem[0], 
+            pasta_destino,
+            callback_arquivo=callback_arquivo
+        )
     
     tempo_execucao = time.time() - inicio
     
@@ -273,11 +345,11 @@ def exibir_instrucoes_iniciais():
      
   {Cores.MAGENTA_CLARO}📁 COMO USAR:{Cores.RESET}
   
-     1. Informe a pasta de ORIGEM (onde estão seus presets)
+     1. Adicione uma ou mais pastas de ORIGEM (onde estão seus presets)
      2. Informe a pasta de DESTINO (onde criar a organização)
      3. Confirme e aguarde o processamento
      
-     Dica: Você pode colar caminhos diretamente no terminal!
+     Dica: Você pode adicionar várias pastas de origem!
   """)
     print(f"  {Cores.DIM}─────────────────────────────────────────────────────────────────{Cores.RESET}")
 
@@ -296,27 +368,33 @@ def main():
     linha_separadora("─", 70)
     
     # Determina os caminhos (variáveis ou input)
-    if PASTA_ORIGEM and PASTA_DESTINO:
-        pasta_origem = PASTA_ORIGEM
+    if PASTAS_ORIGEM and PASTA_DESTINO:
+        pastas_origem = PASTAS_ORIGEM if isinstance(PASTAS_ORIGEM, list) else [PASTAS_ORIGEM]
         pasta_destino = PASTA_DESTINO
         print(f"\n  {Icones.INFO} {info('Usando caminhos pré-configurados no código.')}")
-        print(f"      {Icones.PASTA} Origem:  {pasta_origem}")
+        for pasta in pastas_origem:
+            print(f"      {Icones.PASTA} Origem:  {pasta}")
         print(f"      {Icones.PASTA} Destino: {pasta_destino}")
     else:
         # Mostra categorias disponíveis
         exibir_categorias_visual(MAPA_CATEGORIAS)
         
-        # Solicita caminhos
-        pasta_origem = solicitar_caminho(
-            "Digite o caminho da pasta de ORIGEM (onde estão os presets):"
-        )
+        # Solicita múltiplas pastas de origem
+        pastas_origem = solicitar_caminhos_origem()
+        
+        # Exibe resumo das pastas adicionadas
+        print(f"\n  {Cores.BOLD}📋 PASTAS DE ORIGEM SELECIONADAS:{Cores.RESET}")
+        for idx, pasta in enumerate(pastas_origem, 1):
+            print(f"      {Cores.VERDE_CLARO}{idx}.{Cores.RESET} {pasta}")
+        
+        # Solicita destino
         pasta_destino = solicitar_caminho(
             "Digite o caminho da pasta de DESTINO (onde serão organizados):",
             deve_existir=False
         )
     
-    # Detecta se é modo de re-verificação
-    modo_reverificacao = detectar_modo_reverificacao(pasta_origem, pasta_destino)
+    # Detecta se é modo de re-verificação (só para primeira pasta)
+    modo_reverificacao = len(pastas_origem) == 1 and detectar_modo_reverificacao(pastas_origem[0], pasta_destino)
     
     if modo_reverificacao:
         print()
@@ -335,7 +413,7 @@ def main():
         print()
     
     # Confirmação do usuário
-    if not exibir_confirmacao(pasta_origem, pasta_destino, EXTENSOES_SUPORTADAS, modo_reverificacao):
+    if not exibir_confirmacao(pastas_origem, pasta_destino, EXTENSOES_SUPORTADAS, modo_reverificacao):
         print(f"\n  {Icones.ERRO} {erro('Operação cancelada pelo usuário.')}")
         print(f"  {Cores.DIM}Nenhum arquivo foi modificado.{Cores.RESET}\n")
         return
@@ -345,7 +423,7 @@ def main():
     
     # ========== FASE 1: BUSCA ==========
     try:
-        arquivos, tempo_busca = fase_busca_presets(pasta_origem)
+        arquivos, tempo_busca = fase_busca_presets(pastas_origem)
     except FileNotFoundError as e:
         print(f"\n  {Icones.ERRO} {erro(str(e))}")
         return
@@ -355,14 +433,14 @@ def main():
     
     if len(arquivos) == 0:
         print(f"\n  {Icones.AVISO} {aviso('Nenhum preset encontrado!')}")
-        print(f"      Verifique se a pasta contém arquivos .fxp ou .SerumPreset")
-        print(f"      Pasta verificada: {dim(pasta_origem)}\n")
+        print(f"      Verifique se as pastas contêm arquivos .fxp ou .SerumPreset")
+        print(f"      Pastas verificadas: {len(pastas_origem)}\n")
         return
     
     # ========== FASE 2: ORGANIZAÇÃO ==========
     try:
         estatisticas, tempo_organizacao = fase_organizacao(
-            pasta_origem, 
+            pastas_origem, 
             pasta_destino, 
             len(arquivos)
         )

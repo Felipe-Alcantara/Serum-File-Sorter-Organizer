@@ -206,13 +206,89 @@ def contar_presets_com_progresso(
     return arquivos
 
 
+def organizar_presets_multiplas_origens(
+    pastas_origem: List[str],
+    pasta_destino: str,
+    callback_progresso: Optional[Callable] = None,
+    callback_arquivo: Optional[Callable] = None,
+    callback_scan: Optional[Callable] = None,
+    callback_pasta: Optional[Callable] = None
+) -> dict:
+    """
+    Organiza presets de MÚLTIPLAS pastas de origem para um único destino.
+    
+    Args:
+        pastas_origem: Lista de caminhos das pastas com presets
+        pasta_destino: Caminho da pasta onde será criada a estrutura organizada
+        callback_progresso: Função chamada com (atual, total) para atualizar progresso
+        callback_arquivo: Função chamada com (arquivo, categorias, info)
+        callback_scan: Função chamada durante o scan com (contador)
+        callback_pasta: Função chamada ao iniciar cada pasta (pasta, indice, total)
+        
+    Returns:
+        Dicionário com estatísticas consolidadas de todas as origens
+    """
+    # Estatísticas consolidadas
+    estatisticas_total = {
+        "total_arquivos_origem": 0,
+        "total_copias_realizadas": 0,
+        "total_duplicatas_ignoradas": 0,
+        "total_multi_categoria": 0,
+        "por_categoria": {},
+        "erros": [],
+        "arquivos_processados": [],
+        "modo_mover": False,
+        "pastas_processadas": [],
+        "estatisticas_por_pasta": {}
+    }
+    
+    # Hashes globais para detectar duplicatas entre pastas
+    hashes_globais: Dict[str, str] = {}
+    
+    for idx, pasta_origem in enumerate(pastas_origem, 1):
+        if callback_pasta:
+            callback_pasta(pasta_origem, idx, len(pastas_origem))
+        
+        # Organiza esta pasta
+        stats = organizar_presets(
+            pasta_origem,
+            pasta_destino,
+            callback_progresso=callback_progresso,
+            callback_arquivo=callback_arquivo,
+            callback_scan=callback_scan,
+            hashes_existentes=hashes_globais  # Passa hashes acumulados
+        )
+        
+        # Consolida estatísticas
+        estatisticas_total["total_arquivos_origem"] += stats["total_arquivos_origem"]
+        estatisticas_total["total_copias_realizadas"] += stats["total_copias_realizadas"]
+        estatisticas_total["total_duplicatas_ignoradas"] += stats["total_duplicatas_ignoradas"]
+        estatisticas_total["total_multi_categoria"] += stats["total_multi_categoria"]
+        estatisticas_total["erros"].extend(stats["erros"])
+        estatisticas_total["arquivos_processados"].extend(stats["arquivos_processados"])
+        estatisticas_total["pastas_processadas"].append(pasta_origem)
+        estatisticas_total["estatisticas_por_pasta"][pasta_origem] = stats
+        
+        # Consolida contagem por categoria
+        for cat, qtd in stats["por_categoria"].items():
+            if cat not in estatisticas_total["por_categoria"]:
+                estatisticas_total["por_categoria"][cat] = 0
+            estatisticas_total["por_categoria"][cat] += qtd
+        
+        # Atualiza hashes globais
+        hashes_globais.update(stats.get("_hashes", {}))
+    
+    return estatisticas_total
+
+
 def organizar_presets(
     pasta_origem: str, 
     pasta_destino: str,
     callback_progresso: Optional[Callable] = None,
     callback_arquivo: Optional[Callable] = None,
     callback_scan: Optional[Callable] = None,
-    modo_mover: bool = None
+    modo_mover: bool = None,
+    hashes_existentes: Optional[Dict[str, str]] = None
 ) -> dict:
     """
     Função principal que organiza todos os presets da origem para o destino.
@@ -231,6 +307,7 @@ def organizar_presets(
         callback_arquivo: Função chamada com (arquivo, categorias, info)
         callback_scan: Função chamada durante o scan com (contador)
         modo_mover: Se True, move arquivos. Se None, detecta automaticamente.
+        hashes_existentes: Dicionário de hashes já processados (para múltiplas origens)
         
     Returns:
         Dicionário com estatísticas da operação
@@ -254,7 +331,8 @@ def organizar_presets(
     pasta_destino_path = Path(pasta_destino)
     
     # Registro de hashes para detectar duplicatas de conteúdo
-    hashes_copiados: Dict[str, str] = {}  # hash -> caminho do primeiro arquivo
+    # Usa hashes existentes se fornecido (para múltiplas origens)
+    hashes_copiados: Dict[str, str] = dict(hashes_existentes) if hashes_existentes else {}
     
     # Fase 1: Escaneia todos os arquivos
     arquivos = contar_presets_com_progresso(pasta_origem, callback_scan)
@@ -388,5 +466,8 @@ def organizar_presets(
                 "arquivo": str(arquivo_preset),
                 "erro": str(erro)
             })
+    
+    # Retorna hashes para uso em múltiplas origens
+    estatisticas["_hashes"] = hashes_copiados
     
     return estatisticas

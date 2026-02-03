@@ -35,6 +35,7 @@ MAPA_CATEGORIAS = {
     "Lead": [
         # Keywords principais
         "lead", "melody", "solo", "hook", "screech", "scream", "screamer",
+        "whistle",  # Sons de assobio/flauta aguda
         # Keywords curtas
         "ld",
     ],
@@ -50,6 +51,7 @@ MAPA_CATEGORIAS = {
         # Nova categoria para bells
         "bell", "bells", "chime", "chimes", "glockenspiel",
         "tubular", "campanella", "tinkle",
+        "musicbox", "music box", "tines",  # Caixinhas de música e tines
         # Português
         "sino",
         "bl", "bel",  # Curtas (bel = prefix BEL_)
@@ -74,6 +76,7 @@ MAPA_CATEGORIAS = {
         "synth", "poly", "polysynth", "analog", "analogue",
         "vintage", "retro", "classic synth", "80s", "synthwave",
         "supersaw", "saw lead", "square", "classic",
+        "sync", "hardsync",  # Sync sounds
         "syn", "saw", "sy", "cl",  # Curtas (cl = Classic prefix)
     ],
     
@@ -107,6 +110,7 @@ MAPA_CATEGORIAS = {
         "transition", "trans", "whoosh", "hit", "tension", 
         "buildup", "build up", "cinematic fx", "glitch",
         "grid",  # Para os "Grid -" presets
+        "serumfx", "vocoder",  # Presets de efeito do Serum
         # Português
         "ruido", "destrui", "explosao", "explo",
         "fx", "rss",  # Curtas (rss = Risers)

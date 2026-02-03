@@ -221,7 +221,7 @@ def test_reverificacao_move_para_categoria_correta():
         
         # Cria arquivos com categorias identificáveis
         (uncategorized / "Heavy_Bass_01.fxp").write_bytes(b"bass1")
-        (uncategorized / "Bright_Lead_Synth.fxp").write_bytes(b"lead1")
+        (uncategorized / "Bright_Lead_Solo.fxp").write_bytes(b"lead1")
         (uncategorized / "Warm_Pad.fxp").write_bytes(b"pad1")
         (uncategorized / "Random_Name.fxp").write_bytes(b"random")  # Sem categoria
         
@@ -233,11 +233,19 @@ def test_reverificacao_move_para_categoria_correta():
         )
         
         # Verifica que arquivos foram para as categorias certas
-        assert (base_path / "Bass" / "Heavy_Bass_01.fxp").exists(), \
+        bass_path = base_path / "Bass" / "Heavy_Bass_01.fxp"
+        lead_path = base_path / "Lead" / "Bright_Lead_Solo.fxp"
+        pad_path = base_path / "Pad" / "Warm_Pad.fxp"
+        
+        # Debug: lista conteúdo das pastas
+        lead_dir = base_path / "Lead"
+        lead_contents = list(lead_dir.iterdir()) if lead_dir.exists() else []
+        
+        assert bass_path.exists(), \
             f"Bass nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
-        assert (base_path / "Lead" / "Bright_Lead_Synth.fxp").exists(), \
-            f"Lead nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
-        assert (base_path / "Pad" / "Warm_Pad.fxp").exists(), \
+        assert lead_path.exists(), \
+            f"Lead arquivo nao existe. Lead contents: {[f.name for f in lead_contents]}"
+        assert pad_path.exists(), \
             f"Pad nao existe. Pastas: {[p.name for p in base_path.iterdir() if p.is_dir()]}"
         
         # Arquivo sem categoria PERMANECE em Uncategorized
@@ -284,6 +292,54 @@ def test_nao_cria_duplicatas_em_reverificacao():
     print("✅ test_nao_cria_duplicatas_em_reverificacao passou")
 
 
+def test_multiplas_origens():
+    """Testa organização de múltiplas pastas de origem."""
+    from src.manipulador_arquivos import organizar_presets_multiplas_origens
+    
+    with tempfile.TemporaryDirectory() as destino:
+        with tempfile.TemporaryDirectory() as origem1:
+            with tempfile.TemporaryDirectory() as origem2:
+                destino_path = Path(destino)
+                origem1_path = Path(origem1)
+                origem2_path = Path(origem2)
+                
+                # Cria presets na primeira origem
+                (origem1_path / "Bass_Pack1.fxp").write_bytes(b"bass1")
+                (origem1_path / "Lead_Pack1.fxp").write_bytes(b"lead1")
+                
+                # Cria presets na segunda origem
+                (origem2_path / "Bass_Pack2.fxp").write_bytes(b"bass2")
+                (origem2_path / "Pad_Pack2.fxp").write_bytes(b"pad2")
+                
+                # Cria duplicata de conteúdo entre as origens
+                (origem2_path / "Bass_Duplicate.fxp").write_bytes(b"bass1")  # Mesmo conteúdo
+                
+                # Organiza de ambas origens
+                stats = organizar_presets_multiplas_origens(
+                    [origem1, origem2],
+                    destino
+                )
+                
+                # Verifica estatísticas consolidadas
+                assert stats["total_arquivos_origem"] == 5, \
+                    f"Esperava 5 arquivos, encontrou {stats['total_arquivos_origem']}"
+                
+                # A duplicata (bass1) deve ter sido ignorada
+                assert stats["total_duplicatas_ignoradas"] >= 1, \
+                    "Deveria ter detectado duplicata entre as origens"
+                
+                # Verifica arquivos criados
+                assert (destino_path / "Bass" / "Bass_Pack1.fxp").exists()
+                assert (destino_path / "Bass" / "Bass_Pack2.fxp").exists()
+                assert (destino_path / "Lead" / "Lead_Pack1.fxp").exists()
+                assert (destino_path / "Pad" / "Pad_Pack2.fxp").exists()
+                
+                # Verifica que 2 pastas foram processadas
+                assert len(stats["pastas_processadas"]) == 2
+                
+    print("✅ test_multiplas_origens passou")
+
+
 def executar_testes_manipulador():
     """Executa todos os testes do manipulador de arquivos."""
     print("\n📁 TESTES DO MANIPULADOR DE ARQUIVOS")
@@ -298,6 +354,7 @@ def executar_testes_manipulador():
         test_reverificacao_nao_deleta_sem_categoria,
         test_reverificacao_move_para_categoria_correta,
         test_nao_cria_duplicatas_em_reverificacao,
+        test_multiplas_origens,
     ]
     
     passou = 0

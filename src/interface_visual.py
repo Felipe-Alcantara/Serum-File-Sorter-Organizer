@@ -437,12 +437,12 @@ def exibir_categorias_visual(mapa_categorias: dict):
     print(f"  {Cores.DIM}{'─' * 60}{Cores.RESET}\n")
 
 
-def exibir_confirmacao(pasta_origem: str, pasta_destino: str, extensoes: list, modo_mover: bool = False) -> bool:
+def exibir_confirmacao(pastas_origem, pasta_destino: str, extensoes: list, modo_mover: bool = False) -> bool:
     """
     Exibe painel de confirmação antes de iniciar.
     
     Args:
-        pasta_origem: Caminho da origem
+        pastas_origem: Caminho(s) da origem (string ou lista)
         pasta_destino: Caminho do destino
         extensoes: Lista de extensões
         modo_mover: Se True, indica que está no modo re-verificação (mover)
@@ -450,18 +450,31 @@ def exibir_confirmacao(pasta_origem: str, pasta_destino: str, extensoes: list, m
     Returns:
         True se confirmado
     """
+    # Suporta tanto string quanto lista de pastas
+    if isinstance(pastas_origem, str):
+        pastas_origem = [pastas_origem]
+    
     if modo_mover:
         acao_texto = f"{Cores.AMARELO_CLARO}Os arquivos serão MOVIDOS/LIMPOS da origem{Cores.RESET}"
     else:
         acao_texto = f"{Cores.DIM}Os arquivos serão COPIADOS (originais intactos){Cores.RESET}"
     
-    linhas = [
-        f"{Cores.VERDE_CLARO}📂 Origem:{Cores.RESET}  {pasta_origem}",
+    linhas = []
+    
+    # Exibe origens
+    if len(pastas_origem) == 1:
+        linhas.append(f"{Cores.VERDE_CLARO}📂 Origem:{Cores.RESET}  {pastas_origem[0]}")
+    else:
+        linhas.append(f"{Cores.VERDE_CLARO}📂 Origens ({len(pastas_origem)} pastas):{Cores.RESET}")
+        for idx, pasta in enumerate(pastas_origem, 1):
+            linhas.append(f"   {Cores.DIM}{idx}.{Cores.RESET} {pasta}")
+    
+    linhas.extend([
         f"{Cores.AZUL_CLARO}📂 Destino:{Cores.RESET} {pasta_destino}",
         f"{Cores.AMARELO_CLARO}📄 Extensões:{Cores.RESET} {', '.join(extensoes)}",
         "",
         acao_texto
-    ]
+    ])
     
     caixa_info("RESUMO DA OPERAÇÃO", linhas, "📋")
     
