@@ -474,8 +474,11 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
         tempo_execucao: Tempo total de execução
         pasta_destino: Pasta de destino
     """
-    total = estatisticas['total_processados']
-    duplicatas = estatisticas['total_duplicatas']
+    # Compatibilidade com novo e antigo formato de estatísticas
+    total_origem = estatisticas.get('total_arquivos_origem', estatisticas.get('total_processados', 0))
+    total_copias = estatisticas.get('total_copias_realizadas', total_origem)
+    duplicatas_ignoradas = estatisticas.get('total_duplicatas_ignoradas', 0)
+    multi_categoria = estatisticas.get('total_multi_categoria', 0)
     erros = len(estatisticas.get('erros', []))
     
     # Cabeçalho do resultado
@@ -485,8 +488,15 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
     # Estatísticas gerais
     print(f"  {Cores.BOLD}📊 ESTATÍSTICAS GERAIS{Cores.RESET}")
     print(f"  {Cores.DIM}{'─' * 50}{Cores.RESET}")
-    print(f"  {Icones.ARQUIVO}  Total de presets processados: {Cores.BOLD}{Cores.VERDE_CLARO}{total}{Cores.RESET}")
-    print(f"  {Icones.DUPLICATA}  Duplicatas renomeadas:       {Cores.BOLD}{Cores.AMARELO_CLARO}{duplicatas}{Cores.RESET}")
+    print(f"  {Icones.ARQUIVO}  Arquivos analisados:          {Cores.BOLD}{Cores.VERDE_CLARO}{total_origem}{Cores.RESET}")
+    print(f"  📋  Cópias realizadas:           {Cores.BOLD}{Cores.VERDE_CLARO}{total_copias}{Cores.RESET}")
+    
+    if duplicatas_ignoradas > 0:
+        print(f"  {Icones.DUPLICATA}  Duplicatas ignoradas (hash):  {Cores.BOLD}{Cores.AMARELO_CLARO}{duplicatas_ignoradas}{Cores.RESET}")
+    
+    if multi_categoria > 0:
+        print(f"  🔀  Multi-categoria:             {Cores.BOLD}{Cores.CIANO_CLARO}{multi_categoria}{Cores.RESET} arquivos em múltiplas pastas")
+    
     if erros > 0:
         print(f"  {Icones.ERRO}  Erros encontrados:           {Cores.BOLD}{Cores.VERMELHO_CLARO}{erros}{Cores.RESET}")
     print(f"  ⏱️   Tempo de execução:          {Cores.BOLD}{tempo_execucao:.2f}s{Cores.RESET}")
@@ -504,6 +514,7 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
         )
         
         max_qtd = max(estatisticas['por_categoria'].values()) if estatisticas['por_categoria'] else 1
+        total_refs = sum(estatisticas['por_categoria'].values())
         
         for categoria, quantidade in categorias_ordenadas:
             icone = ICONES_CATEGORIAS.get(categoria, "📄")
@@ -513,7 +524,7 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
             barra = f"{Cores.VERDE_CLARO}{Icones.BARRA_CHEIA * barra_tam}{Cores.RESET}"
             
             # Porcentagem
-            pct = (quantidade / total * 100) if total > 0 else 0
+            pct = (quantidade / total_refs * 100) if total_refs > 0 else 0
             
             print(f"  {icone} {categoria:18} {quantidade:5} {barra} {Cores.DIM}({pct:.1f}%){Cores.RESET}")
     
@@ -535,9 +546,12 @@ def exibir_resultado_final(estatisticas: dict, tempo_execucao: float, pasta_dest
     print()
     linha_separadora("═", 70, Cores.VERDE_CLARO)
     
-    if total > 0:
+    if total_copias > 0:
         print(f"\n  {Icones.CONCLUIDO} {sucesso('Seus presets foram organizados com sucesso!')}")
         print(f"  {Icones.PASTA} {info('Pasta de destino:')} {pasta_destino}")
+    elif duplicatas_ignoradas > 0:
+        print(f"\n  {Icones.INFO} {info('Todos os arquivos já existem no destino.')}")
+        print(f"     Nenhuma cópia foi necessária (detecção por hash).")
     else:
         print(f"\n  {Icones.AVISO} {aviso('Nenhum preset foi encontrado na pasta de origem.')}")
         print(f"     Verifique se o caminho está correto e se há arquivos .fxp ou .SerumPreset")

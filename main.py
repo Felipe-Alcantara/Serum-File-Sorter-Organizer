@@ -24,7 +24,7 @@ from pathlib import Path
 # Adiciona o diretório atual ao path para importar módulos locais
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.manipulador_arquivos import organizar_presets, contar_presets, buscar_presets_recursivo
+from src.manipulador_arquivos import organizar_presets, buscar_presets_recursivo
 from src.categorizador import obter_todas_categorias
 from src.config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS
 from src.interface_visual import (
@@ -34,7 +34,7 @@ from src.interface_visual import (
     log_fase, log_arquivo_processado, log_resumo_busca,
     sucesso, erro, aviso, info, destaque, dim,
     cabecalho, caixa_info, linha_separadora,
-    barra_progresso, atualizar_linha, animacao_processando,
+    barra_progresso, atualizar_linha,
     ICONES_CATEGORIAS
 )
 
@@ -106,14 +106,24 @@ def fase_busca_presets(pasta_origem: str) -> tuple:
     
     inicio = time.time()
     
-    # Animação enquanto conta
-    animacao_processando("Escaneando diretórios", 0.8)
+    # Animação enquanto escaneia - mostra contagem em tempo real
+    arquivos = []
+    spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    spin_index = 0
     
-    # Conta os arquivos
-    arquivos = list(buscar_presets_recursivo(pasta_origem))
+    for arquivo in buscar_presets_recursivo(pasta_origem):
+        arquivos.append(arquivo)
+        # Atualiza a cada 10 arquivos para não sobrecarregar
+        if len(arquivos) % 10 == 0:
+            atualizar_linha(f"  {Cores.CIANO_CLARO}{spinner[spin_index]}{Cores.RESET} Escaneando... {Cores.VERDE_CLARO}{len(arquivos)}{Cores.RESET} presets encontrados")
+            spin_index = (spin_index + 1) % len(spinner)
+    
     total = len(arquivos)
     
     tempo_busca = time.time() - inicio
+    
+    # Limpa a linha de animação
+    print()
     
     log_resumo_busca(total, EXTENSOES_SUPORTADAS, tempo_busca)
     
@@ -136,20 +146,48 @@ def fase_organizacao(pasta_origem: str, pasta_destino: str, total_arquivos: int)
     
     print(f"  {Icones.INFO} {info('Legenda:')}")
     print(f"      {Cores.VERDE_CLARO}→{Cores.RESET} Arquivo copiado com sucesso")
-    print(f"      {Cores.AMARELO_CLARO}(renomeado){Cores.RESET} Duplicata detectada e renomeada")
+    print(f"      {Cores.CIANO_CLARO}[multi]{Cores.RESET} Arquivo copiado para múltiplas categorias")
+    print(f"      {Cores.AMARELO_CLARO}(duplicata){Cores.RESET} Arquivo idêntico já existe, ignorado")
     print()
     
     # Contador para exibição
     arquivos_mostrados = 0
     max_mostrar = 50  # Limite de linhas para não poluir muito
     
-    def callback_arquivo(arquivo, categoria, duplicata, contador, total):
+    def callback_arquivo(arquivo: str, categorias: list, info_extra: dict):
         """Callback chamado para cada arquivo processado."""
         nonlocal arquivos_mostrados
         
+        tipo = info_extra.get("tipo", "processado")
+        contador = info_extra.get("contador", 0)
+        total = info_extra.get("total", 0)
+        
         if MODO_VERBOSE and arquivos_mostrados < max_mostrar:
-            log_arquivo_processado(arquivo, categoria, duplicata, contador, total)
+            if tipo == "duplicata_ignorada":
+                # Arquivo duplicata ignorado
+                print(f"  {Cores.AMARELO_CLARO}⊘{Cores.RESET} {dim(arquivo[:40])} {Cores.AMARELO_CLARO}(duplicata ignorada){Cores.RESET}")
+            elif tipo == "processado":
+                # Arquivo processado
+                is_multi = info_extra.get("multi", False)
+                
+                # Monta lista de categorias com ícones
+                cats_str = ""
+                for cat in categorias[:3]:  # Mostra até 3 categorias
+                    icone = ICONES_CATEGORIAS.get(cat, "📄")
+                    cats_str += f"{icone}{cat} "
+                
+                if len(categorias) > 3:
+                    cats_str += f"(+{len(categorias) - 3})"
+                
+                multi_tag = f" {Cores.CIANO_CLARO}[multi:{len(categorias)}]{Cores.RESET}" if is_multi else ""
+                
+                # Trunca nome se necessário
+                nome_display = arquivo if len(arquivo) <= 35 else arquivo[:32] + "..."
+                
+                print(f"  {Cores.VERDE_CLARO}→{Cores.RESET} {nome_display} → {cats_str}{multi_tag}")
+            
             arquivos_mostrados += 1
+            
         elif arquivos_mostrados == max_mostrar:
             print(f"\n  {Cores.DIM}... continuando em modo silencioso ({total - max_mostrar} restantes){Cores.RESET}\n")
             arquivos_mostrados += 1
@@ -187,15 +225,20 @@ def exibir_preview_categorias(estatisticas: dict):
     if not estatisticas['por_categoria']:
         return
     
-    print(f"\n  {Cores.BOLD}📊 PRÉVIA DAS CATEGORIAS ENCONTRADAS{Cores.RESET}")
+    print(f"\n  {Cores.BOLD}📊 DISTRIBUIÇÃO POR CATEGORIA{Cores.RESET}")
     print(f"  {Cores.DIM}{'─' * 45}{Cores.RESET}")
     
-    for categoria, qtd in sorted(estatisticas['por_categoria'].items(), key=lambda x: -x[1])[:5]:
+    # Informação de multi-categorização
+    if estatisticas.get('total_multi_categoria', 0) > 0:
+        print(f"  {Cores.CIANO_CLARO}ℹ{Cores.RESET} {estatisticas['total_multi_categoria']} arquivos foram copiados para múltiplas categorias")
+        print()
+    
+    for categoria, qtd in sorted(estatisticas['por_categoria'].items(), key=lambda x: -x[1])[:8]:
         icone = ICONES_CATEGORIAS.get(categoria, "📄")
         print(f"  {icone} {categoria}: {Cores.VERDE_CLARO}{qtd}{Cores.RESET} presets")
     
-    if len(estatisticas['por_categoria']) > 5:
-        restantes = len(estatisticas['por_categoria']) - 5
+    if len(estatisticas['por_categoria']) > 8:
+        restantes = len(estatisticas['por_categoria']) - 8
         print(f"  {Cores.DIM}... e mais {restantes} categorias{Cores.RESET}")
 
 
@@ -273,7 +316,7 @@ def main():
     
     # Dica final
     print(f"  {Cores.DIM}💡 Dica: Execute novamente para processar novos presets adicionados{Cores.RESET}")
-    print(f"  {Cores.DIM}         Arquivos duplicados serão renomeados automaticamente{Cores.RESET}")
+    print(f"  {Cores.DIM}         Arquivos já copiados serão ignorados automaticamente (detecção por hash){Cores.RESET}")
     print()
 
 

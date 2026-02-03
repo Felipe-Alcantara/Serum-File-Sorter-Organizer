@@ -7,27 +7,37 @@ Automatize a organização da sua biblioteca de presets do sintetizador **Xfer S
 - 🔍 **Busca recursiva** em todas as subpastas
 - 📁 **Organização automática** por categoria (Bass, Lead, Pad, etc.)
 - 🏷️ **Detecção inteligente** baseada em keywords no nome do arquivo
+- � **Multi-categorização**: arquivos podem ir para múltiplas categorias se aplicável
 - 🔒 **100% seguro**: apenas copia arquivos, nunca move ou deleta
-- 🔄 **Tratamento de duplicatas**: renomeia automaticamente para evitar sobrescrita
+- 🔄 **Detecção de duplicatas por hash**: evita cópias desnecessárias
+- 🎵 **Ignora nomes de gêneros**: "Future Bass" não categoriza como Bass
 - 📊 **Relatório detalhado** após execução
 
 ## 📂 Categorias Suportadas
 
 | Categoria | Keywords Detectadas |
 |-----------|---------------------|
-| Bass | bass, bs, 808, sub, growl, reese, wobble... |
-| Lead | lead, ld, solo, hook, main, melody... |
-| Pluck | pluck, pl, pizz, staccato... |
-| Piano/Keys | piano, keys, organ, rhodes, clav... |
-| Pad | pad, atmosphere, drone, ambient... |
-| Synth | synth, poly, saw, analog, vintage... |
-| Drums | drum, kick, snare, clap, hat, perc... |
-| Arp/Seq | arp, seq, sequence, pattern... |
-| FX | fx, noise, riser, impact, sweep... |
-| Vocals | vox, vocal, choir, voice... |
-| Strings/Orch | string, violin, orch, brass, flute... |
-| Chords | chord, stab, harmonic... |
+| Bass | bass, 808, sub, growl, reese, wobble, subbass, lowend... |
+| Lead | lead, solo, hook, melody, screamer, mono... |
+| Pluck | pluck, pizz, staccato, mallet... |
+| Piano/Keys | piano, keys, organ, rhodes, clav, wurlitzer... |
+| Pad | pad, atmosphere, drone, ambient, evolving, texture... |
+| Synth | synth, poly, analog, vintage, supersaw... |
+| Drums | drum, kick, snare, clap, hat, perc, tom, cymbal... |
+| Arp/Seq | arp, sequence, pattern, arpeggio... |
+| FX | sfx, noise, riser, impact, sweep, whoosh, glitch... |
+| Vocals | vocal, vox, choir, voice, formant, talk, speech... |
+| Strings/Orch | string, violin, orch, brass, flute, cinematic... |
+| Chords | chord, stab, harmonic, power... |
 | Uncategorized | (arquivos não classificados) |
+
+## 🎵 Tratamento Inteligente de Gêneros
+
+O programa ignora nomes de gêneros musicais para evitar falsos positivos:
+- "Future Bass" → Não marca como Bass
+- "Drum and Bass" / "DnB" → Não marca como Bass ou Drum  
+- "Dubstep" → Não afeta categorização
+- E outros gêneros comuns na música eletrônica
 
 ## 🚀 Instalação
 
@@ -157,7 +167,8 @@ MAPA_CATEGORIAS = {
 
 - ✅ Arquivos originais **nunca são modificados**
 - ✅ Usa `shutil.copy2` para preservar metadados
-- ✅ Duplicatas são **renomeadas**, não sobrescritas
+- ✅ Duplicatas detectadas por **hash MD5** são ignoradas (não cria cópias desnecessárias)
+- ✅ Execute quantas vezes quiser - só copia arquivos novos
 - ✅ Validação de caminhos antes de executar
 
 ## 📄 Extensões Suportadas

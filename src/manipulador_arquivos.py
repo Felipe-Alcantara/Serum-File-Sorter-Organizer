@@ -8,14 +8,36 @@ Contém funções para busca, cópia e organização de arquivos.
 import os
 import shutil
 import time
+import hashlib
 from pathlib import Path
-from typing import Generator, Tuple, Callable, Optional
+from typing import Generator, Tuple, Callable, Optional, List, Set, Dict
 
-from src.config import EXTENSOES_SUPORTADAS
-from src.categorizador import identificar_categoria, validar_extensao
+from src.config import EXTENSOES_SUPORTADAS, CATEGORIA_PADRAO
+from src.categorizador import identificar_categorias, validar_extensao
 
 
-def buscar_presets_recursivo(pasta_origem: str) -> Generator[Path, None, None]:
+def calcular_hash_arquivo(caminho_arquivo: Path, tamanho_bloco: int = 65536) -> str:
+    """
+    Calcula o hash MD5 de um arquivo para detectar duplicatas.
+    
+    Args:
+        caminho_arquivo: Path do arquivo
+        tamanho_bloco: Tamanho do bloco para leitura
+        
+    Returns:
+        Hash MD5 do arquivo como string hexadecimal
+    """
+    hasher = hashlib.md5()
+    with open(caminho_arquivo, 'rb') as f:
+        for bloco in iter(lambda: f.read(tamanho_bloco), b''):
+            hasher.update(bloco)
+    return hasher.hexdigest()
+
+
+def buscar_presets_recursivo(
+    pasta_origem: str,
+    callback_progresso: Optional[Callable] = None
+) -> Generator[Path, None, None]:
     """
     Busca recursivamente todos os arquivos de preset na pasta de origem.
     
@@ -81,7 +103,6 @@ def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path) -> Tuple[Pat
     Copia um preset para a pasta de destino de forma segura.
     
     - Preserva metadados usando shutil.copy2
-    - Trata duplicatas gerando nome único
     - Nunca sobrescreve arquivos existentes
     
     Args:
@@ -89,113 +110,169 @@ def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path) -> Tuple[Pat
         pasta_destino: Path da pasta de destino
         
     Returns:
-        Tuple com (caminho_final, foi_renomeado)
+        Tuple com (caminho_final, ja_existia)
     """
     # Cria a pasta de destino se não existir
     pasta_destino.mkdir(parents=True, exist_ok=True)
     
-    # Define caminho inicial de destino
+    # Define caminho de destino
     caminho_destino = pasta_destino / arquivo_origem.name
     
-    # Verifica e trata duplicatas
-    caminho_final = gerar_nome_unico(caminho_destino)
-    foi_renomeado = (caminho_final.name != arquivo_origem.name)
+    # Se já existe, não copia (será tratado como duplicata)
+    if caminho_destino.exists():
+        return caminho_destino, True
     
     # Copia preservando metadados
-    shutil.copy2(arquivo_origem, caminho_final)
+    shutil.copy2(arquivo_origem, caminho_destino)
     
-    return caminho_final, foi_renomeado
+    return caminho_destino, False
 
 
-def contar_presets(pasta_origem: str) -> int:
+def contar_presets_com_progresso(
+    pasta_origem: str,
+    callback_contagem: Optional[Callable] = None
+) -> List[Path]:
     """
-    Conta o total de presets na pasta de origem (para barra de progresso).
+    Lista todos os presets na pasta de origem com callback de progresso.
     
     Args:
         pasta_origem: Caminho da pasta raiz
+        callback_contagem: Função chamada com (contador) a cada arquivo encontrado
         
     Returns:
-        Total de arquivos de preset encontrados
+        Lista de Paths dos arquivos encontrados
     """
-    return sum(1 for _ in buscar_presets_recursivo(pasta_origem))
+    arquivos = []
+    contador = 0
+    
+    for arquivo in buscar_presets_recursivo(pasta_origem):
+        arquivos.append(arquivo)
+        contador += 1
+        if callback_contagem:
+            callback_contagem(contador)
+    
+    return arquivos
 
 
 def organizar_presets(
     pasta_origem: str, 
     pasta_destino: str,
     callback_progresso: Optional[Callable] = None,
-    callback_arquivo: Optional[Callable] = None
+    callback_arquivo: Optional[Callable] = None,
+    callback_scan: Optional[Callable] = None
 ) -> dict:
     """
     Função principal que organiza todos os presets da origem para o destino.
+    
+    CARACTERÍSTICAS:
+    - Multi-categorização: arquivos podem ir para múltiplas categorias
+    - Detecção de duplicatas por hash: arquivos idênticos são ignorados
+    - Nunca cria cópias desnecessárias
     
     Args:
         pasta_origem: Caminho da pasta com os presets desorganizados
         pasta_destino: Caminho da pasta onde será criada a estrutura organizada
         callback_progresso: Função chamada com (atual, total) para atualizar progresso
-        callback_arquivo: Função chamada com (arquivo, categoria, duplicata, contador, total)
+        callback_arquivo: Função chamada com (arquivo, categorias, info)
+        callback_scan: Função chamada durante o scan com (contador)
         
     Returns:
         Dicionário com estatísticas da operação
     """
     # Inicializa estatísticas
     estatisticas = {
-        "total_processados": 0,
-        "total_duplicatas": 0,
+        "total_arquivos_origem": 0,
+        "total_copias_realizadas": 0,
+        "total_duplicatas_ignoradas": 0,
+        "total_multi_categoria": 0,
         "por_categoria": {},
         "erros": [],
-        "arquivos_processados": []  # Lista detalhada para log
+        "arquivos_processados": []
     }
     
     pasta_destino_path = Path(pasta_destino)
     
-    # Conta total para progresso (se callbacks fornecidos)
-    total_arquivos = 0
-    if callback_progresso or callback_arquivo:
-        total_arquivos = contar_presets(pasta_origem)
+    # Registro de hashes para detectar duplicatas de conteúdo
+    hashes_copiados: Dict[str, str] = {}  # hash -> caminho do primeiro arquivo
     
-    contador = 0
+    # Fase 1: Escaneia todos os arquivos
+    arquivos = contar_presets_com_progresso(pasta_origem, callback_scan)
+    total_arquivos = len(arquivos)
+    estatisticas["total_arquivos_origem"] = total_arquivos
     
-    # Processa cada preset encontrado
-    for arquivo_preset in buscar_presets_recursivo(pasta_origem):
-        contador += 1
-        
+    # Fase 2: Processa cada arquivo
+    for contador, arquivo_preset in enumerate(arquivos, 1):
         try:
-            # Identifica a categoria baseado no nome
-            categoria = identificar_categoria(arquivo_preset.name)
+            # Calcula hash do arquivo para detectar duplicatas
+            hash_arquivo = calcular_hash_arquivo(arquivo_preset)
             
-            # Define pasta de destino para esta categoria
-            pasta_categoria = pasta_destino_path / categoria
+            # Verifica se já copiamos um arquivo com este conteúdo
+            if hash_arquivo in hashes_copiados:
+                estatisticas["total_duplicatas_ignoradas"] += 1
+                
+                if callback_arquivo:
+                    callback_arquivo(
+                        arquivo_preset.name,
+                        [],  # Nenhuma categoria (duplicata)
+                        {
+                            "tipo": "duplicata_ignorada",
+                            "original": hashes_copiados[hash_arquivo],
+                            "contador": contador,
+                            "total": total_arquivos
+                        }
+                    )
+                continue
             
-            # Copia o arquivo
-            caminho_final, foi_renomeado = copiar_preset_seguro(arquivo_preset, pasta_categoria)
+            # Identifica TODAS as categorias aplicáveis
+            categorias = identificar_categorias(arquivo_preset.name)
             
-            # Atualiza estatísticas
-            estatisticas["total_processados"] += 1
+            # Se nenhuma categoria encontrada, vai para Uncategorized
+            if not categorias:
+                categorias = [CATEGORIA_PADRAO]
             
-            if foi_renomeado:
-                estatisticas["total_duplicatas"] += 1
+            # Se múltiplas categorias, registra
+            if len(categorias) > 1:
+                estatisticas["total_multi_categoria"] += 1
             
-            if categoria not in estatisticas["por_categoria"]:
-                estatisticas["por_categoria"][categoria] = 0
-            estatisticas["por_categoria"][categoria] += 1
+            # Copia para cada categoria encontrada
+            primeiro_destino = None
+            for categoria in categorias:
+                pasta_categoria = pasta_destino_path / categoria
+                caminho_final, ja_existia = copiar_preset_seguro(arquivo_preset, pasta_categoria)
+                
+                if not ja_existia:
+                    estatisticas["total_copias_realizadas"] += 1
+                    
+                    if primeiro_destino is None:
+                        primeiro_destino = str(caminho_final)
+                
+                # Atualiza contagem por categoria
+                if categoria not in estatisticas["por_categoria"]:
+                    estatisticas["por_categoria"][categoria] = 0
+                estatisticas["por_categoria"][categoria] += 1
+            
+            # Registra o hash com o primeiro destino
+            if primeiro_destino:
+                hashes_copiados[hash_arquivo] = primeiro_destino
             
             # Registra detalhes do arquivo
             estatisticas["arquivos_processados"].append({
                 "origem": str(arquivo_preset),
-                "destino": str(caminho_final),
-                "categoria": categoria,
-                "renomeado": foi_renomeado
+                "categorias": categorias,
+                "multi": len(categorias) > 1
             })
             
             # Callback para atualizar interface
             if callback_arquivo:
                 callback_arquivo(
                     arquivo_preset.name,
-                    categoria,
-                    foi_renomeado,
-                    contador,
-                    total_arquivos
+                    categorias,
+                    {
+                        "tipo": "processado",
+                        "multi": len(categorias) > 1,
+                        "contador": contador,
+                        "total": total_arquivos
+                    }
                 )
             
             if callback_progresso:
