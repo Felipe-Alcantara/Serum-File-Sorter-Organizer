@@ -7,8 +7,9 @@ Contém funções para busca, cópia e organização de arquivos.
 
 import os
 import shutil
+import time
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Callable, Optional
 
 from config import EXTENSOES_SUPORTADAS
 from categorizador import identificar_categoria, validar_extensao
@@ -106,13 +107,33 @@ def copiar_preset_seguro(arquivo_origem: Path, pasta_destino: Path) -> Tuple[Pat
     return caminho_final, foi_renomeado
 
 
-def organizar_presets(pasta_origem: str, pasta_destino: str) -> dict:
+def contar_presets(pasta_origem: str) -> int:
+    """
+    Conta o total de presets na pasta de origem (para barra de progresso).
+    
+    Args:
+        pasta_origem: Caminho da pasta raiz
+        
+    Returns:
+        Total de arquivos de preset encontrados
+    """
+    return sum(1 for _ in buscar_presets_recursivo(pasta_origem))
+
+
+def organizar_presets(
+    pasta_origem: str, 
+    pasta_destino: str,
+    callback_progresso: Optional[Callable] = None,
+    callback_arquivo: Optional[Callable] = None
+) -> dict:
     """
     Função principal que organiza todos os presets da origem para o destino.
     
     Args:
         pasta_origem: Caminho da pasta com os presets desorganizados
         pasta_destino: Caminho da pasta onde será criada a estrutura organizada
+        callback_progresso: Função chamada com (atual, total) para atualizar progresso
+        callback_arquivo: Função chamada com (arquivo, categoria, duplicata, contador, total)
         
     Returns:
         Dicionário com estatísticas da operação
@@ -122,13 +143,23 @@ def organizar_presets(pasta_origem: str, pasta_destino: str) -> dict:
         "total_processados": 0,
         "total_duplicatas": 0,
         "por_categoria": {},
-        "erros": []
+        "erros": [],
+        "arquivos_processados": []  # Lista detalhada para log
     }
     
     pasta_destino_path = Path(pasta_destino)
     
+    # Conta total para progresso (se callbacks fornecidos)
+    total_arquivos = 0
+    if callback_progresso or callback_arquivo:
+        total_arquivos = contar_presets(pasta_origem)
+    
+    contador = 0
+    
     # Processa cada preset encontrado
     for arquivo_preset in buscar_presets_recursivo(pasta_origem):
+        contador += 1
+        
         try:
             # Identifica a categoria baseado no nome
             categoria = identificar_categoria(arquivo_preset.name)
@@ -148,6 +179,27 @@ def organizar_presets(pasta_origem: str, pasta_destino: str) -> dict:
             if categoria not in estatisticas["por_categoria"]:
                 estatisticas["por_categoria"][categoria] = 0
             estatisticas["por_categoria"][categoria] += 1
+            
+            # Registra detalhes do arquivo
+            estatisticas["arquivos_processados"].append({
+                "origem": str(arquivo_preset),
+                "destino": str(caminho_final),
+                "categoria": categoria,
+                "renomeado": foi_renomeado
+            })
+            
+            # Callback para atualizar interface
+            if callback_arquivo:
+                callback_arquivo(
+                    arquivo_preset.name,
+                    categoria,
+                    foi_renomeado,
+                    contador,
+                    total_arquivos
+                )
+            
+            if callback_progresso:
+                callback_progresso(contador, total_arquivos)
             
         except Exception as erro:
             estatisticas["erros"].append({
