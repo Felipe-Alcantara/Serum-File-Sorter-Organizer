@@ -1,74 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-Testes Unitários - Serum Preset Organizer
-==========================================
-Execute com: python -m pytest tests.py -v
-Ou simplesmente: python tests.py
+Testes do Módulo Manipulador de Arquivos - Serum Preset Organizer
+==================================================================
+Testes para as funções de busca, cópia e organização de arquivos.
 """
 
-import os
 import sys
+import os
 import tempfile
-import shutil
 from pathlib import Path
 
-# Adiciona o diretório pai ao path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Adiciona o diretório raiz ao path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from categorizador import identificar_categoria, validar_extensao
-from manipulador_arquivos import gerar_nome_unico, buscar_presets_recursivo, organizar_presets
-from config import CATEGORIA_PADRAO
-
-
-def test_identificar_categoria_bass():
-    """Testa identificação de presets de Bass."""
-    assert identificar_categoria("TSP_S2PH_Bass_alum.fxp") == "Bass"
-    assert identificar_categoria("808_Hard.fxp") == "Bass"
-    assert identificar_categoria("Deep_Sub_Wobble.fxp") == "Bass"
-    assert identificar_categoria("GROWL_Monster.serumpreset") == "Bass"
-    print("✅ test_identificar_categoria_bass passou")
-
-
-def test_identificar_categoria_lead():
-    """Testa identificação de presets de Lead."""
-    assert identificar_categoria("Epic_Lead_01.fxp") == "Lead"
-    assert identificar_categoria("LD_Screamer.fxp") == "Lead"
-    assert identificar_categoria("Main_Melody.serumpreset") == "Lead"
-    print("✅ test_identificar_categoria_lead passou")
-
-
-def test_identificar_categoria_pad():
-    """Testa identificação de presets de Pad."""
-    assert identificar_categoria("Lush_Pad_Soft.fxp") == "Pad"
-    assert identificar_categoria("Atmosphere_Dark.fxp") == "Pad"
-    assert identificar_categoria("PD_Dreamy.serumpreset") == "Pad"
-    print("✅ test_identificar_categoria_pad passou")
-
-
-def test_identificar_categoria_case_insensitive():
-    """Testa que a busca é case-insensitive."""
-    assert identificar_categoria("BASS_LOUD.fxp") == "Bass"
-    assert identificar_categoria("bass_quiet.fxp") == "Bass"
-    assert identificar_categoria("BaSs_MiXeD.fxp") == "Bass"
-    print("✅ test_identificar_categoria_case_insensitive passou")
-
-
-def test_identificar_categoria_uncategorized():
-    """Testa que arquivos sem keywords vão para Uncategorized."""
-    assert identificar_categoria("Random_Name_123.fxp") == CATEGORIA_PADRAO
-    assert identificar_categoria("XYZ_ABC.serumpreset") == CATEGORIA_PADRAO
-    print("✅ test_identificar_categoria_uncategorized passou")
-
-
-def test_validar_extensao():
-    """Testa validação de extensões de arquivo."""
-    extensoes = ['.fxp', '.serumpreset']
-    assert validar_extensao("preset.fxp", extensoes) == True
-    assert validar_extensao("preset.SerumPreset", extensoes) == True
-    assert validar_extensao("preset.SERUMPRESET", extensoes) == True
-    assert validar_extensao("preset.wav", extensoes) == False
-    assert validar_extensao("preset.txt", extensoes) == False
-    print("✅ test_validar_extensao passou")
+from src.manipulador_arquivos import (
+    gerar_nome_unico, 
+    buscar_presets_recursivo, 
+    organizar_presets
+)
 
 
 def test_gerar_nome_unico():
@@ -179,26 +128,18 @@ def test_tratamento_duplicatas():
     print("✅ test_tratamento_duplicatas passou")
 
 
-def executar_todos_testes():
-    """Executa todos os testes."""
-    print("\n" + "=" * 50)
-    print("🧪 EXECUTANDO TESTES")
-    print("=" * 50 + "\n")
+def executar_testes_manipulador():
+    """Executa todos os testes do manipulador de arquivos."""
+    print("\n📁 TESTES DO MANIPULADOR DE ARQUIVOS")
+    print("─" * 40)
     
     testes = [
-        test_identificar_categoria_bass,
-        test_identificar_categoria_lead,
-        test_identificar_categoria_pad,
-        test_identificar_categoria_case_insensitive,
-        test_identificar_categoria_uncategorized,
-        test_validar_extensao,
         test_gerar_nome_unico,
         test_buscar_presets_recursivo,
         test_organizar_presets_completo,
         test_tratamento_duplicatas,
     ]
     
-    total = len(testes)
     passou = 0
     falhou = 0
     
@@ -213,14 +154,9 @@ def executar_todos_testes():
             print(f"❌ {teste.__name__} ERRO: {e}")
             falhou += 1
     
-    print("\n" + "=" * 50)
-    print(f"📊 RESULTADO: {passou}/{total} testes passaram")
-    if falhou == 0:
-        print("🎉 Todos os testes passaram!")
-    else:
-        print(f"⚠️  {falhou} teste(s) falharam")
-    print("=" * 50)
+    return passou, falhou
 
 
 if __name__ == "__main__":
-    executar_todos_testes()
+    passou, falhou = executar_testes_manipulador()
+    print(f"\n📊 Resultado: {passou} passaram, {falhou} falharam")

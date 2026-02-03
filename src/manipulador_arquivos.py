@@ -11,8 +11,8 @@ import time
 from pathlib import Path
 from typing import Generator, Tuple, Callable, Optional
 
-from config import EXTENSOES_SUPORTADAS
-from categorizador import identificar_categoria, validar_extensao
+from src.config import EXTENSOES_SUPORTADAS
+from src.categorizador import identificar_categoria, validar_extensao
 
 
 def buscar_presets_recursivo(pasta_origem: str) -> Generator[Path, None, None]:

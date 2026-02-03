@@ -5,8 +5,9 @@ Módulo de Categorização - Serum Preset Organizer
 Contém a lógica de identificação de categoria baseada no nome do arquivo.
 """
 
-from config import MAPA_CATEGORIAS, CATEGORIA_PADRAO
 from pathlib import Path
+
+from src.config import MAPA_CATEGORIAS, CATEGORIA_PADRAO
 
 
 def identificar_categoria(nome_arquivo: str) -> str:

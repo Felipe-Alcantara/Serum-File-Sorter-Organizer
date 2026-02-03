@@ -59,25 +59,36 @@ MODO_VERBOSE = True  # True = mostra cada arquivo, False = apenas barra de progr
 
 ```
 Serum-File-Sorter-Organizer/
-├── main.py                 # Script principal (ponto de entrada)
-├── config.py               # Configurações e mapeamento de categorias
-├── categorizador.py        # Lógica de identificação de categoria
-├── manipulador_arquivos.py # Funções de busca e cópia de arquivos
-├── interface_visual.py     # Interface colorida e formatação de terminal
-├── tests.py                # Testes unitários
-├── README.md               # Documentação
-└── LICENSE                 # Licença do projeto
+│
+├── 📄 main.py              # Script principal (ponto de entrada)
+├── 📄 run_tests.py         # Executor de testes
+│
+├── 📁 src/                 # Código fonte principal
+│   ├── __init__.py         # Inicialização do pacote
+│   ├── config.py           # Configurações e mapeamento de categorias
+│   ├── categorizador.py    # Lógica de identificação de categoria
+│   ├── manipulador_arquivos.py  # Funções de busca e cópia
+│   └── interface_visual.py # Interface colorida para terminal
+│
+├── 📁 tests/               # Testes unitários
+│   ├── __init__.py
+│   ├── test_categorizador.py
+│   └── test_manipulador.py
+│
+├── 📄 .gitignore           # Arquivos ignorados pelo Git
+├── 📄 README.md            # Documentação
+└── 📄 LICENSE              # Licença MIT
 ```
 
 ## 🧪 Executando Testes
 
 ```bash
-python tests.py
+python run_tests.py
 ```
 
-Ou com pytest:
+Ou testes individuais:
 ```bash
-python -m pytest tests.py -v
+python -m pytest tests/ -v
 ```
 
 ## 📋 Exemplo de Saída

@@ -24,10 +24,10 @@ from pathlib import Path
 # Adiciona o diretório atual ao path para importar módulos locais
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from manipulador_arquivos import organizar_presets, contar_presets, buscar_presets_recursivo
-from categorizador import obter_todas_categorias
-from config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS
-from interface_visual import (
+from src.manipulador_arquivos import organizar_presets, contar_presets, buscar_presets_recursivo
+from src.categorizador import obter_todas_categorias
+from src.config import EXTENSOES_SUPORTADAS, MAPA_CATEGORIAS
+from src.interface_visual import (
     Cores, Icones, 
     exibir_banner_principal, exibir_categorias_visual,
     exibir_confirmacao, exibir_resultado_final,
